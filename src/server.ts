@@ -532,7 +532,22 @@ async function parseListing(input: JsonRecord = {}) {
   const listingText = input.listingText || '';
   if (listingText) return parseListingText(listingText, url);
   if (!url) throw new Error('Provide url or listingText');
-  const response = await axios.get(url, { timeout: 12000, headers: { 'User-Agent': 'deal-analyzer-mcp/1.8.0 (+https://github.com/opolyo01/deal-analyzer-mcp)' } });
+  const ua = input._userAgent || 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+  const response = await axios.get(url, {
+    timeout: 12000,
+    headers: {
+      'User-Agent': ua,
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache',
+      'Sec-Fetch-Dest': 'document',
+      'Sec-Fetch-Mode': 'navigate',
+      'Sec-Fetch-Site': 'none',
+      'Upgrade-Insecure-Requests': '1',
+    }
+  });
   return extractStructuredDataFromHtml(response.data, url);
 }
 function compareDeals(rawDeals: JsonRecord[] = []) {
@@ -734,7 +749,7 @@ app.post('/analyze', (req, res) => {
   try { res.json(calculateDeal(req.body || {})); } catch (error) { res.status(500).json({ error: errorMessage(error, 'Failed to analyze deal.') }); }
 });
 app.post('/parse-listing', async (req, res) => {
-  try { res.json(await parseListing(req.body || {})); } catch (error) { res.status(500).json({ error: errorMessage(error, 'Failed to parse listing.') }); }
+  try { res.json(await parseListing({ ...req.body, _userAgent: req.headers['user-agent'] })); } catch (error) { res.status(500).json({ error: errorMessage(error, 'Failed to parse listing.') }); }
 });
 app.post('/compare', (req, res) => {
   try { res.json(compareDeals(req.body?.deals || [])); } catch (error) { res.status(500).json({ error: errorMessage(error, 'Failed to compare deals.') }); }
