@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Deal Dashboard</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 0; padding: 12px; background: #f5f7fb; color: #1f2937; }
+h1 { font-size: 24px; margin: 0 0 12px; }
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.stat { background: white; border-radius: 14px; padding: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+.stat-label { font-size: 12px; color: #6b7280; }
+.stat-value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+.deal-list { display: flex; flex-direction: column; gap: 12px; }
+.card { background: white; border-radius: 16px; padding: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); border-left: 6px solid #9ca3af; }
+.card.buy { border-left-color: #10b981; }
+.card.hold { border-left-color: #f59e0b; }
+.card.pass { border-left-color: #ef4444; }
+.row { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+.label { font-size: 18px; font-weight: 700; }
+.meta { color: #6b7280; font-size: 13px; }
+.score-pill { border-radius: 999px; padding: 6px 10px; font-weight: 700; font-size: 13px; background: #eef2ff; }
+.metrics { display: grid; grid-template-columns: repeat(2, minmax(120px, 1fr)); gap: 8px; margin-top: 10px; }
+.metric { background: #f9fafb; border-radius: 12px; padding: 10px; }
+.metric-name { color: #6b7280; font-size: 12px; }
+.metric-value { font-weight: 700; margin-top: 4px; }
+.badge { display: inline-block; border-radius: 999px; padding: 4px 8px; font-size: 12px; background: #e5e7eb; margin-top: 8px; }
+.empty { background: white; padding: 20px; border-radius: 16px; text-align: center; color: #6b7280; }
+</style>
+</head>
+<body>
+<h1>Deal Dashboard</h1>
+<div class="summary" id="summary"></div>
+<div class="deal-list" id="deals"></div>
+<script>
+function currency(n) {
+  const sign = n < 0 ? '-' : '';
+  const amount = Math.abs(Math.round(Number(n || 0)));
+  return sign + '$' + amount.toLocaleString('en-US');
+}
+
+function scoreClass(rec) {
+  const v = String(rec || '').toLowerCase();
+  if (v === 'buy') return 'buy';
+  if (v === 'pass') return 'pass';
+  return 'hold';
+}
+
+function renderSummary(deals) {
+  const count = deals.length;
+  const buys = deals.filter(d => d.analysis?.summary?.recommendation === 'BUY').length;
+  const avgScore = count ? (deals.reduce((s, d) => s + (d.analysis?.summary?.score || 0), 0) / count).toFixed(1) : '0.0';
+  const best = [...deals].sort((a, b) => (b.analysis?.summary?.score || 0) - (a.analysis?.summary?.score || 0))[0];
+
+  document.getElementById('summary').innerHTML = `
+    <div class="stat"><div class="stat-label">Saved deals</div><div class="stat-value">${count}</div></div>
+    <div class="stat"><div class="stat-label">Buy-rated deals</div><div class="stat-value">${buys}</div></div>
+    <div class="stat"><div class="stat-label">Average score</div><div class="stat-value">${avgScore}</div></div>
+    <div class="stat"><div class="stat-label">Top deal</div><div class="stat-value">${best ? (best.label || 'Deal') : '-'}</div></div>
+  `;
+}
+
+function renderDeals(deals) {
+  if (!deals.length) {
+    document.getElementById('deals').innerHTML = '<div class="empty">No saved deals yet.</div>';
+    return;
+  }
+
+  deals.sort((a, b) => {
+    const s = (b.analysis?.summary?.score || 0) - (a.analysis?.summary?.score || 0);
+    if (s !== 0) return s;
+    return (b.analysis?.summary?.monthlyCashFlow || 0) - (a.analysis?.summary?.monthlyCashFlow || 0);
+  });
+
+  document.getElementById('deals').innerHTML = deals.map((deal, index) => {
+    const summary = deal.analysis?.summary || {};
+    const input = deal.input || {};
+    return `
+      <div class="card ${scoreClass(summary.recommendation)}">
+        <div class="row">
+          <div>
+            <div class="label">#${index + 1} ${deal.label || input.label || input.address || 'Deal'}</div>
+            <div class="meta">${input.address || ''}</div>
+          </div>
+          <div class="score-pill">${summary.score || 0}/10 · ${summary.recommendation || 'HOLD'}</div>
+        </div>
+        <div class="metrics">
+          <div class="metric"><div class="metric-name">Cash flow</div><div class="metric-value">${currency(summary.monthlyCashFlow)}</div></div>
+          <div class="metric"><div class="metric-name">Rent</div><div class="metric-value">${currency(deal.analysis?.input?.rent || input.rent || summary.rent || 0)}</div></div>
+          <div class="metric"><div class="metric-name">Cap rate</div><div class="metric-value">${summary.capRate != null ? (summary.capRate * 100).toFixed(1) + '%' : '-'}</div></div>
+          <div class="metric"><div class="metric-name">Break-even rent</div><div class="metric-value">${summary.breakEvenRent != null ? currency(summary.breakEvenRent) : '-'}</div></div>
+        </div>
+        ${summary.estimatedRent ? '<div class="badge">Rent estimated</div>' : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+async function load() {
+  const res = await fetch('/deals');
+  const deals = await res.json();
+  renderSummary(deals);
+  renderDeals(deals);
+}
+
+load();
+</script>
+</body>
+</html>
