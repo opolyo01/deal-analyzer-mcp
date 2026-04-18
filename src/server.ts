@@ -86,7 +86,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 const APP_NAME = 'deal-analyzer-mcp';
-const APP_VERSION = '1.8.1';
+const APP_VERSION = '1.8.2';
 const DEFAULT_RATE = Number(process.env.DEFAULT_RATE || 0.065);
 const DEFAULT_TERM_YEARS = Number(process.env.DEFAULT_TERM_YEARS || 30);
 const DEFAULT_VACANCY_RATE = Number(process.env.DEFAULT_VACANCY_RATE || 0.05);
@@ -395,6 +395,17 @@ function calculateDeal(rawInput: JsonRecord = {}) {
       monthlyMortgage: round(monthlyMortgage),
       monthlyOperatingExpense: round(monthlyOperatingExpense),
       monthlyAllInCost: round(monthlyAllInCost),
+      monthlyExpenseBreakdown: {
+        mortgage: round(monthlyMortgage),
+        taxes: round(monthlyTaxes),
+        insurance: round(monthlyInsurance),
+        hoa: round(input.hoa),
+        otherMonthlyCosts: round(input.otherMonthlyCosts),
+        vacancy: round(monthlyVacancy),
+        repairs: round(monthlyRepairs),
+        capex: round(monthlyCapex),
+        management: round(monthlyManagement)
+      },
       estimatedRent: input.estimatedRent,
       estimatedRentConfidence: input.estimatedRentConfidence
     },

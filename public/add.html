@@ -69,6 +69,22 @@
             <input id="otherMonthlyCosts" inputmode="decimal" placeholder="0" />
           </div>
           <div class="field">
+            <label for="vacancyRate">Vacancy reserve %</label>
+            <input id="vacancyRate" inputmode="decimal" placeholder="5" />
+          </div>
+          <div class="field">
+            <label for="repairsRate">Repairs reserve %</label>
+            <input id="repairsRate" inputmode="decimal" placeholder="5" />
+          </div>
+          <div class="field">
+            <label for="capexRate">Capex reserve %</label>
+            <input id="capexRate" inputmode="decimal" placeholder="5" />
+          </div>
+          <div class="field">
+            <label for="managementRate">Management %</label>
+            <input id="managementRate" inputmode="decimal" placeholder="8" />
+          </div>
+          <div class="field">
             <label for="downPaymentPercent">Down payment %</label>
             <input id="downPaymentPercent" inputmode="decimal" placeholder="20" />
           </div>
@@ -153,6 +169,10 @@
     function readPayload() {
       const downPaymentPercent = numberValue('downPaymentPercent');
       const rate = numberValue('rate');
+      const vacancyRate = numberValue('vacancyRate');
+      const repairsRate = numberValue('repairsRate');
+      const capexRate = numberValue('capexRate');
+      const managementRate = numberValue('managementRate');
       return stripEmpty({
         label: textValue('label'),
         address: textValue('address'),
@@ -162,6 +182,10 @@
         insurance: numberValue('insurance'),
         hoa: numberValue('hoa'),
         otherMonthlyCosts: numberValue('otherMonthlyCosts'),
+        vacancyRate: vacancyRate == null ? null : vacancyRate / 100,
+        repairsRate: repairsRate == null ? null : repairsRate / 100,
+        capexRate: capexRate == null ? null : capexRate / 100,
+        managementRate: managementRate == null ? null : managementRate / 100,
         downPaymentPercent: downPaymentPercent == null ? null : downPaymentPercent / 100,
         rate: rate == null ? null : rate / 100,
         termYears: numberValue('termYears'),
@@ -209,7 +233,26 @@
           <div class="metric"><div class="metric-label">Monthly all-in cost</div><div class="metric-value">${currency(summary.monthlyAllInCost)}</div></div>
           <div class="metric"><div class="metric-label">Rent used</div><div class="metric-value">${currency(input.rent)}</div></div>
         </div>
+        ${expenseBreakdownHtml(summary)}
         ${savedId ? `<p class="status">Saved as ${escapeHtml(savedId)}</p>` : ''}
+      `;
+    }
+
+    function expenseBreakdownHtml(summary) {
+      const items = summary.monthlyExpenseBreakdown || {};
+      return `
+        <div class="breakdown">
+          <div class="breakdown-row"><span>Mortgage</span><strong>${currency(items.mortgage)}</strong></div>
+          <div class="breakdown-row"><span>Taxes</span><strong>${currency(items.taxes)}</strong></div>
+          <div class="breakdown-row"><span>Insurance</span><strong>${currency(items.insurance)}</strong></div>
+          <div class="breakdown-row"><span>HOA</span><strong>${currency(items.hoa)}</strong></div>
+          <div class="breakdown-row"><span>Other monthly costs</span><strong>${currency(items.otherMonthlyCosts)}</strong></div>
+          <div class="breakdown-row"><span>Vacancy reserve</span><strong>${currency(items.vacancy)}</strong></div>
+          <div class="breakdown-row"><span>Repairs reserve</span><strong>${currency(items.repairs)}</strong></div>
+          <div class="breakdown-row"><span>Capex reserve</span><strong>${currency(items.capex)}</strong></div>
+          <div class="breakdown-row"><span>Management</span><strong>${currency(items.management)}</strong></div>
+          <div class="breakdown-row total"><span>Total monthly cost</span><strong>${currency(summary.monthlyAllInCost)}</strong></div>
+        </div>
       `;
     }
 

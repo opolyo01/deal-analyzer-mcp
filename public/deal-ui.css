@@ -314,6 +314,31 @@ a:focus {
   overflow-wrap: anywhere;
 }
 
+.breakdown {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-top: 12px;
+  overflow: hidden;
+  background: #fffdfa;
+}
+
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+}
+
+.breakdown-row:first-child {
+  border-top: 0;
+}
+
+.breakdown-row.total {
+  background: var(--soft-blue);
+  font-weight: 850;
+}
+
 .recommendation {
   display: inline-flex;
   align-items: center;
