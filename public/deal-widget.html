@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    body { font-family: Arial; padding: 10px; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; }
+    .score { font-size: 20px; font-weight: bold; }
+    .good { color: green; }
+    .bad { color: red; }
+  </style>
+</head>
+<body>
+  <div class="card" id="app"></div>
+  <script>
+    window.addEventListener('message', (event) => {
+      const data = event.data?.structuredContent;
+      if (!data) return;
+
+      const score = data.summary.score;
+      const rec = data.summary.recommendation;
+      const cash = data.summary.monthlyCashFlow;
+
+      document.getElementById('app').innerHTML = `
+        <div class="score ${rec === 'BUY' ? 'good' : 'bad'}">
+          ${score}/10 - ${rec}
+        </div>
+        <div>Cash Flow: $${cash}</div>
+        <div>Cap Rate: ${(data.summary.capRate * 100).toFixed(1)}%</div>
+      `;
+    });
+  </script>
+</body>
+</html>
