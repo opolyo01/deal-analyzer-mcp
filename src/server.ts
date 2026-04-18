@@ -443,76 +443,120 @@ function extractMoney(text: unknown) {
   if (!match) return null;
   return Number(match[1].replace(/,/g, ''));
 }
-function walkForNumbers(node: unknown, out: JsonRecord) {
-  if (!node || typeof node !== 'object') return;
-  if (Array.isArray(node)) return node.forEach(item => walkForNumbers(item, out));
+function normalizePropertyType(raw: string): string {
+  const s = raw.toLowerCase();
+  if (s.includes('single') || s === 'house' || s === 'sfr') return 'Single family';
+  if (s.includes('condo') || s.includes('condominium')) return 'Condo';
+  if (s.includes('townhouse') || s.includes('townhome')) return 'Townhouse';
+  if (s.includes('duplex')) return 'Duplex';
+  if (s.includes('triplex')) return 'Triplex';
+  if (s.includes('multi') || s.includes('apartment') || s.includes('mf')) return 'Multifamily';
+  return raw;
+}
+function walkForNumbers(node: unknown, out: JsonRecord, depth = 0) {
+  if (!node || typeof node !== 'object' || depth > 12) return;
+  if (Array.isArray(node)) return node.forEach(item => walkForNumbers(item, out, depth + 1));
   for (const [key, value] of Object.entries(node)) {
-    const lower = key.toLowerCase();
-    if (typeof value === 'number') {
-      if (out.price == null && (lower.includes('price') || lower === 'amount')) out.price = value;
-      if (out.rent == null && lower.includes('rent')) out.rent = value;
-      if (out.taxes == null && (lower.includes('tax') || lower.includes('propertytax'))) out.taxes = value;
-      if (out.beds == null && (lower.includes('bed') || lower === 'bedrooms')) out.beds = value;
-      if (out.baths == null && (lower.includes('bath') || lower === 'bathrooms')) out.baths = value;
-      if (out.sqft == null && (lower.includes('sqft') || lower.includes('floorarea') || lower.includes('livingarea'))) out.sqft = value;
-    } else if (typeof value === 'string') {
+    const k = key.toLowerCase();
+    if (typeof value === 'number' && value > 0) {
+      if (out.price == null && /listprice|listingprice|askingprice|saleprice|sellingprice|^price$|unformattedprice/.test(k)) out.price = value;
+      if (out.rent == null && /rent|rentalestimate|zestimate.*rent/.test(k)) out.rent = value;
+      if (out.taxes == null && /taxannual|annualtax|propertytax|taxamount|taxesamount|realestatetax/.test(k)) out.taxes = value;
+      if (out.hoa == null && /hoafee|hoamonthly|hoamonth|hoaamt|^hoa$/.test(k)) out.hoa = value;
+      if (out.beds == null && /^bed|bedroom/.test(k)) out.beds = value;
+      if (out.baths == null && /^bath|bathroom/.test(k)) out.baths = value;
+      if (out.sqft == null && /sqft|squarefeet|floorarea|livingarea|finishedsqft/.test(k)) out.sqft = value;
+    } else if (typeof value === 'string' && value.length < 300) {
       const addressMatch = value.match(/\d+ .+, [A-Za-z .'-]+, [A-Z]{2} \d{5}/);
       if (!out.address && addressMatch) out.address = addressMatch[0];
-      if (!out.propertyType && (lower.includes('propertytype') || lower === 'hometype')) out.propertyType = value;
+      if (!out.propertyType && /propertytype|hometype|^type$|propertystyle/.test(k)) out.propertyType = normalizePropertyType(value);
       const money = extractMoney(value);
-      if (money != null) {
-        if (out.price == null && (lower.includes('price') || lower === 'offers')) out.price = money;
-        if (out.rent == null && lower.includes('rent')) out.rent = money;
-        if (out.taxes == null && lower.includes('tax')) out.taxes = money;
+      if (money != null && money > 0) {
+        if (out.price == null && /listprice|listingprice|price|amount/.test(k)) out.price = money;
+        if (out.rent == null && /rent/.test(k)) out.rent = money;
+        if (out.taxes == null && /tax/.test(k)) out.taxes = money;
+        if (out.hoa == null && /hoa/.test(k)) out.hoa = money;
       }
     }
-    walkForNumbers(value, out);
+    walkForNumbers(value, out, depth + 1);
   }
 }
 function parseListingText(text: unknown, sourceUrl = ''): JsonRecord {
   const bodyText = String(text || '').replace(/\s+/g, ' ').trim();
   if (!bodyText) return {};
-  const result: JsonRecord = { sourceUrl, address: '', propertyType: '', price: null, rent: null, taxes: null, beds: null, baths: null, sqft: null, parserNotes: [] };
+  const result: JsonRecord = { sourceUrl, address: '', propertyType: '', price: null, rent: null, taxes: null, hoa: null, insurance: null, beds: null, baths: null, sqft: null, parserNotes: [] };
   const addressMatch = bodyText.match(/\d{1,6}\s+[A-Za-z0-9.'\- ]+,\s*[A-Za-z .'-]+,\s*[A-Z]{2}\s*\d{5}/);
   if (addressMatch) result.address = addressMatch[0].trim();
-  const propertyTypeMatch = bodyText.match(/\b(single family|single-family|multifamily|multi-family|duplex|triplex|quadruplex|condo|townhome|townhouse|apartment)\b/i);
-  if (propertyTypeMatch) result.propertyType = propertyTypeMatch[1];
-  for (const pattern of [/(?:list(?:ing)?\s+price|listed\s+for|price)\D{0,20}(\$[\d,]+)/i, /(\$[\d,]{5,})/]) {
+  const propertyTypeMatch = bodyText.match(/\b(single[\s-]family|multifamily|multi[\s-]family|duplex|triplex|quadruplex|condo(?:minium)?|townhome|townhouse|apartment)\b/i);
+  if (propertyTypeMatch) result.propertyType = normalizePropertyType(propertyTypeMatch[1]);
+  // Price: listing price first, then sold/sales history, then largest dollar amount
+  for (const pattern of [
+    /(?:list(?:ing)?\s+price|listed\s+for|asking\s+price|price)\s*:?\s*(\$[\d,]+)/i,
+    /(?:sold\s+for|sale\s+price|last\s+sold)\s*:?\s*(\$[\d,]+)/i,
+    /(\$[\d,]{5,})/
+  ]) {
     const match = bodyText.match(pattern);
     if (match) { result.price = extractMoney(match[1]); break; }
   }
-  for (const pattern of [/(?:monthly\s+rent|estimated\s+rent|rent)\D{0,30}(\$[\d,]+)/i, /(?:\$[\d,]+\s*\/\s*mo)/i]) {
+  // Rent
+  for (const pattern of [
+    /(?:monthly\s+rent|estimated\s+rent|rent(?:\s+estimate)?)\s*:?\s*(\$[\d,]+)/i,
+    /(\$[\d,]+)\s*\/\s*mo(?:nth)?/i
+  ]) {
     const match = bodyText.match(pattern);
     if (match) { result.rent = extractMoney(match[1] || match[0]); break; }
   }
-  const taxesMatch = bodyText.match(/(?:property\s+tax(?:es)?|tax(?:es)?)\D{0,25}(\$[\d,]+)/i);
-  if (taxesMatch) result.taxes = extractMoney(taxesMatch[1]);
-  const bedsMatch = bodyText.match(/(\d+(?:\.\d+)?)\s*beds?/i);
+  // Taxes — prefer annual; if monthly found, multiply by 12
+  const annualTaxMatch = bodyText.match(/(?:property\s+)?tax(?:es)?\s*:?\s*(\$[\d,]+)\s*(?:\/\s*(?:yr|year)|per\s+year|annually)/i)
+    || bodyText.match(/(?:property\s+)?tax(?:es)?\s*:?\s*(\$[\d,]+)/i);
+  if (annualTaxMatch) {
+    const val = extractMoney(annualTaxMatch[1]);
+    const monthly = /\/\s*mo/.test(annualTaxMatch[0]);
+    result.taxes = val != null ? (monthly ? val * 12 : val) : null;
+  }
+  // HOA
+  const hoaMatch = bodyText.match(/hoa(?:\s+fee)?\s*:?\s*(\$[\d,]+)\s*(?:\/\s*mo(?:nth)?)?/i)
+    || bodyText.match(/(?:homeowner[s']?\s+assoc[^$]{0,30})\s*(\$[\d,]+)/i);
+  if (hoaMatch) result.hoa = extractMoney(hoaMatch[1]);
+  // Beds / baths / sqft
+  const bedsMatch = bodyText.match(/(\d+(?:\.\d+)?)\s*(?:bed(?:room)?s?)\b/i);
   if (bedsMatch) result.beds = Number(bedsMatch[1]);
-  const bathsMatch = bodyText.match(/(\d+(?:\.\d+)?)\s*baths?/i);
+  const bathsMatch = bodyText.match(/(\d+(?:\.\d+)?)\s*(?:bath(?:room)?s?)\b/i);
   if (bathsMatch) result.baths = Number(bathsMatch[1]);
-  const sqftMatch = bodyText.match(/([\d,]+)\s*(?:sq\.?\s*ft|square\s*feet)/i);
+  const sqftMatch = bodyText.match(/([\d,]+)\s*(?:sq\.?\s*ft\.?|square\s*feet)/i);
   if (sqftMatch) result.sqft = Number(sqftMatch[1].replace(/,/g, ''));
   return result;
 }
 function extractStructuredDataFromHtml(html: string, sourceUrl = ''): JsonRecord {
   const $ = cheerio.load(html);
-  const result: JsonRecord = { sourceUrl, address: '', propertyType: '', price: null, rent: null, taxes: null, beds: null, baths: null, sqft: null, parserNotes: [] };
+  const result: JsonRecord = { sourceUrl, address: '', propertyType: '', price: null, rent: null, taxes: null, hoa: null, insurance: null, beds: null, baths: null, sqft: null, parserNotes: [] };
   const metaCandidates = [$('meta[property="og:title"]').attr('content'), $('title').text(), $('meta[name="description"]').attr('content')].filter(Boolean).join(' | ');
   Object.assign(result, parseListingText(metaCandidates, sourceUrl));
-  const scripts = $('script').map((_, el) => $(el).html()).get().filter(Boolean);
-  for (const scriptContent of scripts) {
-    const trimmed = scriptContent.trim();
-    let parsed = null;
-    if (trimmed.startsWith('{') || trimmed.startsWith('[')) parsed = tryParseJson(trimmed);
-    if (!parsed && /"@type"\s*:\s*"Residence"|jsonld/i.test(trimmed)) {
-      const jsonStart = trimmed.indexOf('{');
-      if (jsonStart >= 0) parsed = tryParseJson(trimmed.slice(jsonStart));
+
+  const scripts = $('script').map((_, el) => ({ type: $(el).attr('type') || '', id: $(el).attr('id') || '', content: $(el).html() || '' })).get();
+  for (const { type, id, content } of scripts) {
+    const trimmed = content.trim();
+    if (!trimmed) continue;
+    let parsed: unknown = null;
+    // JSON-LD structured data (most reliable)
+    if (type === 'application/ld+json') parsed = tryParseJson(trimmed);
+    // Zillow embeds all listing data in __NEXT_DATA__
+    else if (id === '__NEXT_DATA__') parsed = tryParseJson(trimmed);
+    // Any top-level JSON blob
+    else if (trimmed.startsWith('{') || trimmed.startsWith('[')) parsed = tryParseJson(trimmed);
+    // Inline JS assignment: window.X = {...} or var X = {...}
+    else {
+      const assignMatch = trimmed.match(/(?:window\.\w+|var\s+\w+)\s*=\s*(\{[\s\S]{20,})/);
+      if (assignMatch) parsed = tryParseJson(assignMatch[1].replace(/;\s*$/, ''));
     }
     if (parsed) walkForNumbers(parsed, result);
   }
+
   const bodyText = $('body').text().replace(/\s+/g, ' ');
   const fallback = parseListingText(bodyText, sourceUrl);
+  const parserNotes: string[] = [];
+  if (sourceUrl.includes('redfin')) parserNotes.push('Applied Redfin-friendly heuristics');
+  if (sourceUrl.includes('zillow')) parserNotes.push('Applied Zillow-friendly heuristics');
   return {
     sourceUrl,
     address: result.address || fallback.address || '',
@@ -520,10 +564,12 @@ function extractStructuredDataFromHtml(html: string, sourceUrl = ''): JsonRecord
     price: result.price ?? fallback.price ?? null,
     rent: result.rent ?? fallback.rent ?? null,
     taxes: result.taxes ?? fallback.taxes ?? null,
+    hoa: result.hoa ?? fallback.hoa ?? null,
+    insurance: result.insurance ?? fallback.insurance ?? null,
     beds: result.beds ?? fallback.beds ?? null,
     baths: result.baths ?? fallback.baths ?? null,
     sqft: result.sqft ?? fallback.sqft ?? null,
-    parserNotes: [sourceUrl.includes('redfin') ? 'Applied Redfin-friendly heuristics' : null, sourceUrl.includes('zillow') ? 'Applied Zillow-friendly heuristics' : null].filter(Boolean),
+    parserNotes,
     extracted: { bodyTextPreview: bodyText.slice(0, 500) }
   };
 }

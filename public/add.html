@@ -174,10 +174,12 @@
         if (el) el.value = value;
       };
       setField('address', data.address);
+      setField('label', data.address || '');
       setField('price', data.price);
       setField('rent', data.rent);
       setField('taxes', data.taxes);
-      setField('label', data.address || '');
+      setField('hoa', data.hoa);
+      setField('insurance', data.insurance);
       if (data.propertyType) {
         const sel = document.getElementById('propertyType');
         const match = Array.from(sel.options).find(o => o.value.toLowerCase().includes(data.propertyType.toLowerCase()));
