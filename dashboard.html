@@ -301,13 +301,16 @@
         const input = deal.analysis?.input || deal.input || {};
         const cls = recClass(summary.recommendation);
         return `
-          <article class="deal-item ${cls}">
+          <article class="deal-item ${cls}" data-id="${escapeHtml(deal.id)}">
             <div class="deal-head">
               <div>
                 <div class="deal-name">${index + 1}. ${escapeHtml(deal.label || input.label || input.address || 'Deal')}</div>
                 <div class="deal-meta">${escapeHtml(input.address || input.propertyType || 'Saved deal')}</div>
               </div>
-              <div class="pill ${cls}">${Number(summary.score || 0)}/10 ${escapeHtml(summary.recommendation || 'HOLD')}</div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div class="pill ${cls}">${Number(summary.score || 0)}/10 ${escapeHtml(summary.recommendation || 'HOLD')}</div>
+                <button class="delete-btn" data-id="${escapeHtml(deal.id)}" title="Delete deal" style="min-height:32px;padding:4px 10px;font-size:0.8em;border-color:#e0a0a0;color:#c44">&#x2715;</button>
+              </div>
             </div>
             <div class="deal-metrics">
               <div><div class="metric-label">After debt</div><strong>${currency(summary.monthlyCashFlow)}</strong></div>
@@ -318,6 +321,20 @@
           </article>
         `;
       }).join('');
+
+      list.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const id = btn.dataset.id;
+          if (!confirm('Delete this deal?')) return;
+          const res = await fetch(`/deals/${id}`, { method: 'DELETE' });
+          if (res.ok) {
+            btn.closest('article').remove();
+            const remaining = Array.from(list.querySelectorAll('.deal-item')).map(el => ({ analysis: { summary: {}, input: {} } }));
+            if (!list.querySelector('.deal-item')) list.innerHTML = '<div class="empty-state">No saved deals yet. Use "Analyze and save" to keep one here.</div>';
+          }
+        });
+      });
     }
 
     function renderAnalysis(analysis, savedId) {

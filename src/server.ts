@@ -816,6 +816,18 @@ app.get('/deals', (req, res) => {
     res.json(getSavedDeals(user ? user.id : null));
   } catch (error) { res.status(500).json({ error: errorMessage(error, 'Failed to get deals.') }); }
 });
+app.delete('/deals/:id', (req, res) => {
+  try {
+    const user = sessionOrBearerUser(req);
+    if (!user && !ALLOW_ANONYMOUS_MODE) return res.status(401).json({ error: 'unauthorized' });
+    const userId = user ? user.id : null;
+    const existing = db.prepare('SELECT * FROM deals WHERE id = ?').get(req.params.id) as { userId: string | null } | undefined;
+    if (!existing) return res.status(404).json({ error: 'not found' });
+    if (existing.userId !== userId) return res.status(403).json({ error: 'forbidden' });
+    db.prepare('DELETE FROM deals WHERE id = ?').run(req.params.id);
+    res.json({ deleted: req.params.id });
+  } catch (error) { res.status(500).json({ error: errorMessage(error, 'Failed to delete deal.') }); }
+});
 app.get('/dashboard', requireDashboardUser, (req, res) => {
   if (fs.existsSync(dashboardPath)) return res.sendFile(dashboardPath);
   return res.type('html').send('<html><body><h2>Dashboard missing</h2><p>Create dashboard.html to render saved deals.</p></body></html>');
