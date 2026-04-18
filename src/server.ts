@@ -1,23 +1,86 @@
-const express = require('express');
-const session = require('express-session');
-const passport = require('passport');
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const axios = require('axios');
-const cheerio = require('cheerio');
-const fs = require('fs');
-const path = require('path');
-const Database = require('better-sqlite3');
-const { v4: uuidv4 } = require('uuid');
-const crypto = require('crypto');
+import 'dotenv/config';
+import express, { type Request } from 'express';
+import session from 'express-session';
+import passport from 'passport';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+import fs from 'node:fs';
+import path from 'node:path';
+import Database from 'better-sqlite3';
+import { v4 as uuidv4 } from 'uuid';
+import crypto from 'node:crypto';
+
+type JsonRecord = Record<string, any>;
+
+interface AppUser {
+  id: string;
+  googleId?: string | null;
+  email?: string | null;
+  displayName?: string | null;
+}
+
+interface DealColumnRow {
+  name: string;
+}
+
+interface DealRow {
+  id: string;
+  userId: string | null;
+  label: string;
+  input: string;
+  analysis: string;
+  createdAt: string;
+}
+
+interface OAuthClient {
+  client_id: string;
+  client_secret: string | null;
+  redirect_uris: string[];
+  grant_types: string[];
+  token_endpoint_auth_method: string;
+  scope: string;
+  client_name?: string;
+}
+
+interface OAuthCodeRecord {
+  client_id: string;
+  redirect_uri: string;
+  userId: string;
+  scope: string;
+  code_challenge: string;
+  expiresAt: number;
+}
+
+interface OAuthTokenRecord {
+  userId: string;
+  client_id: string;
+  scope: string;
+  expiresAt?: number;
+}
+
+declare global {
+  namespace Express {
+    interface User extends AppUser {}
+  }
+}
+
+declare module 'express-session' {
+  interface SessionData {
+    returnTo?: string;
+  }
+}
 
 const app = express();
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '1mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+const projectRoot = path.resolve(__dirname, '..');
+app.use(express.static(path.join(projectRoot, 'public')));
 app.use(session({
   secret: process.env.SESSION_SECRET || 'dev-session-secret-change-me',
   resave: false,
   saveUninitialized: false,
-  cookie: { httpOnly: true, sameSite: 'lax', secure: false }
+  cookie: { httpOnly: true, sameSite: 'lax', secure: 'auto' }
 }));
 app.use(passport.initialize());
 app.use(passport.session());
@@ -31,9 +94,11 @@ const DEFAULT_REPAIRS_RATE = Number(process.env.DEFAULT_REPAIRS_RATE || 0.05);
 const DEFAULT_CAPEX_RATE = Number(process.env.DEFAULT_CAPEX_RATE || 0.05);
 const DEFAULT_MANAGEMENT_RATE = Number(process.env.DEFAULT_MANAGEMENT_RATE || 0.08);
 const PORT = Number(process.env.PORT || 3000);
-const dashboardPath = path.join(__dirname, 'dashboard.html');
+const dashboardPath = path.join(projectRoot, 'dashboard.html');
+const PUBLIC_BASE_URL = normalizeBaseUrl(process.env.PUBLIC_BASE_URL);
+const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || (PUBLIC_BASE_URL ? `${PUBLIC_BASE_URL}/auth/google/callback` : '/auth/google/callback');
 
-const db = new Database(path.join(__dirname, 'deals.db'));
+const db = new Database(path.join(projectRoot, 'deals.db'));
 db.prepare(`
 CREATE TABLE IF NOT EXISTS deals (
   id TEXT PRIMARY KEY,
@@ -53,68 +118,87 @@ CREATE TABLE IF NOT EXISTS users (
 )
 `).run();
 
-const dealColumns = db.prepare('PRAGMA table_info(deals)').all();
+const dealColumns = db.prepare('PRAGMA table_info(deals)').all() as DealColumnRow[];
 if (!dealColumns.find(c => c.name === 'userId')) {
   db.prepare('ALTER TABLE deals ADD COLUMN userId TEXT').run();
 }
 
-passport.use(new GoogleStrategy({
-  clientID: process.env.GOOGLE_CLIENT_ID || '',
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-  callbackURL: process.env.GOOGLE_CALLBACK_URL || '/auth/google/callback'
-}, (accessToken, refreshToken, profile, done) => {
-  try {
-    let user = db.prepare('SELECT * FROM users WHERE googleId = ?').get(profile.id);
-    const email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
-    const displayName = profile.displayName || email || 'User';
+function configuredSecret(value: string | undefined) {
+  return Boolean(value && !value.startsWith('replace-with-'));
+}
 
-    if (!user) {
-      user = {
-        id: uuidv4(),
-        googleId: profile.id,
-        email,
-        displayName
-      };
-      db.prepare('INSERT INTO users (id, googleId, email, displayName) VALUES (?, ?, ?, ?)').run(user.id, user.googleId, user.email, user.displayName);
-    } else {
-      db.prepare('UPDATE users SET email = ?, displayName = ? WHERE id = ?').run(email, displayName, user.id);
-      user.email = email;
-      user.displayName = displayName;
+function normalizeBaseUrl(value: string | undefined) {
+  return value ? value.replace(/\/+$/, '') : '';
+}
+
+const googleAuthConfigured = configuredSecret(process.env.GOOGLE_CLIENT_ID) && configuredSecret(process.env.GOOGLE_CLIENT_SECRET);
+if (googleAuthConfigured) {
+  passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID || '',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    callbackURL: GOOGLE_CALLBACK_URL
+  }, (accessToken, refreshToken, profile, done) => {
+    try {
+      let user = db.prepare('SELECT * FROM users WHERE googleId = ?').get(profile.id) as AppUser | undefined;
+      const email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
+      const displayName = profile.displayName || email || 'User';
+
+      if (!user) {
+        user = {
+          id: uuidv4(),
+          googleId: profile.id,
+          email,
+          displayName
+        };
+        db.prepare('INSERT INTO users (id, googleId, email, displayName) VALUES (?, ?, ?, ?)').run(user.id, user.googleId, user.email, user.displayName);
+      } else {
+        db.prepare('UPDATE users SET email = ?, displayName = ? WHERE id = ?').run(email, displayName, user.id);
+        user.email = email;
+        user.displayName = displayName;
+      }
+
+      return done(null, user);
+    } catch (error) {
+      return done(error);
     }
-
-    return done(null, user);
-  } catch (error) {
-    return done(error);
-  }
-}));
+  }));
+}
 passport.serializeUser((user, done) => done(null, user.id));
 passport.deserializeUser((id, done) => {
   try {
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(String(id)) as AppUser | undefined;
     done(null, user || null);
   } catch (error) {
     done(error);
   }
 });
 
-const oauthClients = new Map();
-const oauthCodes = new Map();
-const oauthAccessTokens = new Map();
-const oauthRefreshTokens = new Map();
+const oauthClients = new Map<string, OAuthClient>();
+const oauthCodes = new Map<string, OAuthCodeRecord>();
+const oauthAccessTokens = new Map<string, OAuthTokenRecord>();
+const oauthRefreshTokens = new Map<string, OAuthTokenRecord>();
 
-function baseUrl(req) {
+function baseUrl(req: Request) {
+  if (PUBLIC_BASE_URL) return PUBLIC_BASE_URL;
   return `${req.protocol}://${req.get('host')}`;
 }
-function sha256base64url(input) {
+function queryParam(value: unknown) {
+  if (Array.isArray(value)) return queryParam(value[0]);
+  return typeof value === 'string' ? value : '';
+}
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+function sha256base64url(input: string) {
   return crypto.createHash('sha256').update(input).digest('base64url');
 }
 function randomToken() {
   return crypto.randomBytes(32).toString('base64url');
 }
-function getUserById(id) {
-  return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+function getUserById(id: string): AppUser | null {
+  return (db.prepare('SELECT * FROM users WHERE id = ?').get(id) as AppUser | undefined) || null;
 }
-function saveDealRecord(input, analysis, userId = null) {
+function saveDealRecord(input: JsonRecord, analysis: JsonRecord, userId: string | null = null) {
   const id = uuidv4();
   db.prepare(`INSERT INTO deals (id, userId, label, input, analysis, createdAt) VALUES (?, ?, ?, ?, ?, ?)`).run(
     id,
@@ -126,10 +210,10 @@ function saveDealRecord(input, analysis, userId = null) {
   );
   return id;
 }
-function getSavedDeals(userId = null) {
-  const rows = userId
+function getSavedDeals(userId: string | null = null) {
+  const rows = (userId
     ? db.prepare('SELECT * FROM deals WHERE userId = ? ORDER BY createdAt DESC').all(userId)
-    : db.prepare('SELECT * FROM deals WHERE userId IS NULL ORDER BY createdAt DESC').all();
+    : db.prepare('SELECT * FROM deals WHERE userId IS NULL ORDER BY createdAt DESC').all()) as DealRow[];
 
   return rows.map(row => ({
     id: row.id,
@@ -140,43 +224,43 @@ function getSavedDeals(userId = null) {
     analysis: JSON.parse(row.analysis)
   }));
 }
-function currentUser(req) {
+function currentUser(req: Request): AppUser | null {
   return req.user || null;
 }
-function bearerUser(req) {
-  const auth = req.headers.authorization || '';
+function bearerUser(req: Request): AppUser | null {
+  const auth = typeof req.headers.authorization === 'string' ? req.headers.authorization : '';
   if (!auth.startsWith('Bearer ')) return null;
   const token = auth.slice('Bearer '.length);
   const tokenRow = oauthAccessTokens.get(token);
-  if (!tokenRow || tokenRow.expiresAt < Date.now()) return null;
+  if (!tokenRow || (tokenRow.expiresAt ?? 0) < Date.now()) return null;
   return getUserById(tokenRow.userId);
 }
-function sessionOrBearerUser(req) {
+function sessionOrBearerUser(req: Request): AppUser | null {
   return currentUser(req) || bearerUser(req);
 }
 
-function round(value, digits = 2) {
+function round(value: number, digits = 2) {
   return Number(Number(value || 0).toFixed(digits));
 }
-function clamp(value, min, max) {
+function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
-function annualToMonthly(value) {
+function annualToMonthly(value: number) {
   return Number(value || 0) / 12;
 }
-function asCurrency(value) {
+function asCurrency(value: number) {
   const sign = value < 0 ? '-' : '';
   const amount = Math.abs(Math.round(value || 0));
   return `${sign}$${amount.toLocaleString('en-US')}`;
 }
-function calculateMortgagePayment(principal, annualRate, termYears) {
+function calculateMortgagePayment(principal: number, annualRate: number, termYears: number) {
   if (!principal || principal <= 0) return 0;
   const monthlyRate = annualRate / 12;
   const numberOfPayments = termYears * 12;
   if (!monthlyRate) return principal / numberOfPayments;
   return principal * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
 }
-function parseDownPayment(input, price) {
+function parseDownPayment(input: JsonRecord, price: number) {
   if (input.downPaymentAmount != null) return Number(input.downPaymentAmount);
   if (input.downPaymentPercent != null) return price * Number(input.downPaymentPercent);
   if (input.downPayment != null) {
@@ -185,7 +269,7 @@ function parseDownPayment(input, price) {
   }
   return price * 0.2;
 }
-function estimateRent(price, propertyType = '') {
+function estimateRent(price: number, propertyType = '') {
   if (!price) return { rent: 0, estimated: true, confidence: 'low' };
   const kind = String(propertyType || '').toLowerCase();
   let ratio = 0.006;
@@ -195,11 +279,15 @@ function estimateRent(price, propertyType = '') {
   if (kind.includes('condo')) ratio -= 0.0005;
   return { rent: Math.round(price * ratio), estimated: true, confidence: price >= 250000 && price <= 900000 ? 'medium' : 'low' };
 }
-function normalizeDealInput(input = {}) {
+function normalizeDealInput(input: JsonRecord = {}) {
   const price = Number(input.price || 0);
   const rentProvided = input.rent != null && input.rent !== '';
-  const rentEstimate = rentProvided ? null : estimateRent(price, input.propertyType);
-  const rent = rentProvided ? Number(input.rent) : rentEstimate.rent;
+  let rentEstimate: ReturnType<typeof estimateRent> | null = null;
+  let rent = Number(input.rent || 0);
+  if (!rentProvided) {
+    rentEstimate = estimateRent(price, input.propertyType);
+    rent = rentEstimate.rent;
+  }
   const downPaymentAmount = parseDownPayment(input, price);
   return {
     label: input.label || input.address || input.sourceUrl || '',
@@ -227,7 +315,7 @@ function normalizeDealInput(input = {}) {
     sqft: input.sqft != null ? Number(input.sqft) : null
   };
 }
-function calculateDeal(rawInput = {}) {
+function calculateDeal(rawInput: JsonRecord = {}) {
   const input = normalizeDealInput(rawInput);
   const loanAmount = Math.max(input.price - input.downPaymentAmount, 0);
   const monthlyMortgage = calculateMortgagePayment(loanAmount, input.rate, input.termYears);
@@ -315,16 +403,16 @@ function calculateDeal(rawInput = {}) {
     risks
   };
 }
-function tryParseJson(value) {
+function tryParseJson(value: string) {
   try { return JSON.parse(value); } catch { return null; }
 }
-function extractMoney(text) {
+function extractMoney(text: unknown) {
   if (!text || typeof text !== 'string') return null;
   const match = text.match(/\$?\s*([\d,]{4,})(?:\.\d{2})?/);
   if (!match) return null;
   return Number(match[1].replace(/,/g, ''));
 }
-function walkForNumbers(node, out) {
+function walkForNumbers(node: unknown, out: JsonRecord) {
   if (!node || typeof node !== 'object') return;
   if (Array.isArray(node)) return node.forEach(item => walkForNumbers(item, out));
   for (const [key, value] of Object.entries(node)) {
@@ -337,7 +425,8 @@ function walkForNumbers(node, out) {
       if (out.baths == null && (lower.includes('bath') || lower === 'bathrooms')) out.baths = value;
       if (out.sqft == null && (lower.includes('sqft') || lower.includes('floorarea') || lower.includes('livingarea'))) out.sqft = value;
     } else if (typeof value === 'string') {
-      if (!out.address && /\d+ .+, [A-Za-z .'-]+, [A-Z]{2} \d{5}/.test(value)) out.address = value.match(/\d+ .+, [A-Za-z .'-]+, [A-Z]{2} \d{5}/)[0];
+      const addressMatch = value.match(/\d+ .+, [A-Za-z .'-]+, [A-Z]{2} \d{5}/);
+      if (!out.address && addressMatch) out.address = addressMatch[0];
       if (!out.propertyType && (lower.includes('propertytype') || lower === 'hometype')) out.propertyType = value;
       const money = extractMoney(value);
       if (money != null) {
@@ -349,10 +438,10 @@ function walkForNumbers(node, out) {
     walkForNumbers(value, out);
   }
 }
-function parseListingText(text, sourceUrl = '') {
+function parseListingText(text: unknown, sourceUrl = ''): JsonRecord {
   const bodyText = String(text || '').replace(/\s+/g, ' ').trim();
   if (!bodyText) return {};
-  const result = { sourceUrl, address: '', propertyType: '', price: null, rent: null, taxes: null, beds: null, baths: null, sqft: null, parserNotes: [] };
+  const result: JsonRecord = { sourceUrl, address: '', propertyType: '', price: null, rent: null, taxes: null, beds: null, baths: null, sqft: null, parserNotes: [] };
   const addressMatch = bodyText.match(/\d{1,6}\s+[A-Za-z0-9.'\- ]+,\s*[A-Za-z .'-]+,\s*[A-Z]{2}\s*\d{5}/);
   if (addressMatch) result.address = addressMatch[0].trim();
   const propertyTypeMatch = bodyText.match(/\b(single family|single-family|multifamily|multi-family|duplex|triplex|quadruplex|condo|townhome|townhouse|apartment)\b/i);
@@ -375,9 +464,9 @@ function parseListingText(text, sourceUrl = '') {
   if (sqftMatch) result.sqft = Number(sqftMatch[1].replace(/,/g, ''));
   return result;
 }
-function extractStructuredDataFromHtml(html, sourceUrl = '') {
+function extractStructuredDataFromHtml(html: string, sourceUrl = ''): JsonRecord {
   const $ = cheerio.load(html);
-  const result = { sourceUrl, address: '', propertyType: '', price: null, rent: null, taxes: null, beds: null, baths: null, sqft: null, parserNotes: [] };
+  const result: JsonRecord = { sourceUrl, address: '', propertyType: '', price: null, rent: null, taxes: null, beds: null, baths: null, sqft: null, parserNotes: [] };
   const metaCandidates = [$('meta[property="og:title"]').attr('content'), $('title').text(), $('meta[name="description"]').attr('content')].filter(Boolean).join(' | ');
   Object.assign(result, parseListingText(metaCandidates, sourceUrl));
   const scripts = $('script').map((_, el) => $(el).html()).get().filter(Boolean);
@@ -407,7 +496,7 @@ function extractStructuredDataFromHtml(html, sourceUrl = '') {
     extracted: { bodyTextPreview: bodyText.slice(0, 500) }
   };
 }
-async function parseListing(input = {}) {
+async function parseListing(input: JsonRecord = {}) {
   const url = input.url || input.sourceUrl || '';
   const listingText = input.listingText || '';
   if (listingText) return parseListingText(listingText, url);
@@ -415,7 +504,7 @@ async function parseListing(input = {}) {
   const response = await axios.get(url, { timeout: 12000, headers: { 'User-Agent': 'deal-analyzer-mcp/1.8.0 (+https://github.com/opolyo01/deal-analyzer-mcp)' } });
   return extractStructuredDataFromHtml(response.data, url);
 }
-function compareDeals(rawDeals = []) {
+function compareDeals(rawDeals: JsonRecord[] = []) {
   const analyses = rawDeals.map((deal, index) => ({ rank: index + 1, label: calculateDeal(deal).input.label || `Deal ${index + 1}`, analysis: calculateDeal(deal) }));
   analyses.sort((a, b) => (b.analysis.summary.score - a.analysis.summary.score) || (b.analysis.summary.monthlyCashFlow - a.analysis.summary.monthlyCashFlow));
   analyses.forEach((item, index) => { item.rank = index + 1; });
@@ -430,25 +519,28 @@ const tools = [
   { name: 'saveDeal', title: 'Save deal', description: 'Persist a deal to the current signed-in user.', inputSchema: { type: 'object', additionalProperties: true, properties: { label: { type: 'string' }, price: { type: 'number' }, rent: { type: 'number' } }, required: ['price'] } },
   { name: 'getDeals', title: 'Get saved deals', description: 'Retrieve saved deals for the current signed-in user.', inputSchema: { type: 'object', properties: {} } }
 ];
-function jsonRpc(id, result) { return { jsonrpc: '2.0', id: id ?? null, result }; }
-function jsonRpcError(id, code, message) { return { jsonrpc: '2.0', id: id ?? null, error: { code, message } }; }
-function buildAnalyzeToolResult(result, extra = {}) {
+type JsonRpcId = string | number | null | undefined;
+
+function jsonRpc(id: JsonRpcId, result: unknown) { return { jsonrpc: '2.0', id: id ?? null, result }; }
+function jsonRpcError(id: JsonRpcId, code: number, message: string) { return { jsonrpc: '2.0', id: id ?? null, error: { code, message } }; }
+function buildAnalyzeToolResult(result: ReturnType<typeof calculateDeal>, extra: JsonRecord = {}) {
   return {
     content: [{ type: 'text', text: [`Deal score: ${result.summary.score}/10 (${result.summary.recommendation})`, `Cash flow: ${asCurrency(result.summary.monthlyCashFlow)}/mo`, result.summary.estimatedRent ? `Rent: ${asCurrency(result.input.rent)} (estimated)` : `Rent: ${asCurrency(result.input.rent)}/mo`, `Break-even rent: ${asCurrency(result.summary.breakEvenRent)}/mo`].join('\n') }],
     structuredContent: { ...result, ...extra }
   };
 }
-function buildCompareToolResult(comparison) {
+function buildCompareToolResult(comparison: ReturnType<typeof compareDeals>) {
   return { content: [{ type: 'text', text: comparison.analyses.map(item => `${item.rank}. ${item.label} — score ${item.analysis.summary.score}/10, cash flow ${asCurrency(item.analysis.summary.monthlyCashFlow)}/mo`).join('\n') }], structuredContent: comparison };
 }
 
 function defaultClient() {
   const clientId = process.env.DEFAULT_OAUTH_CLIENT_ID || 'chatgpt-dev-client';
   if (!oauthClients.has(clientId)) {
+    const fallbackRedirectUri = PUBLIC_BASE_URL ? `${PUBLIC_BASE_URL}/dashboard` : `http://localhost:${PORT}/dashboard`;
     oauthClients.set(clientId, {
       client_id: clientId,
       client_secret: process.env.DEFAULT_OAUTH_CLIENT_SECRET || null,
-      redirect_uris: (process.env.DEFAULT_OAUTH_REDIRECT_URIS || '').split(',').map(v => v.trim()).filter(Boolean),
+      redirect_uris: (process.env.DEFAULT_OAUTH_REDIRECT_URIS || fallbackRedirectUri).split(',').map(v => v.trim()).filter(Boolean),
       grant_types: ['authorization_code', 'refresh_token'],
       token_endpoint_auth_method: 'none',
       scope: 'openid profile email deals.read deals.write'
@@ -457,8 +549,14 @@ function defaultClient() {
 }
 defaultClient();
 
-app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-app.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: '/' }), (req, res) => {
+app.get('/auth/google', (req, res, next) => {
+  if (!googleAuthConfigured) return res.status(503).send('Google OAuth is not configured');
+  return passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+});
+app.get('/auth/google/callback', (req, res, next) => {
+  if (!googleAuthConfigured) return res.status(503).send('Google OAuth is not configured');
+  return passport.authenticate('google', { failureRedirect: '/' })(req, res, next);
+}, (req, res) => {
   const returnTo = req.session.returnTo || '/dashboard';
   delete req.session.returnTo;
   res.redirect(returnTo);
@@ -513,7 +611,13 @@ app.post('/register', (req, res) => {
   res.status(201).json(client);
 });
 app.get('/authorize', (req, res) => {
-  const { response_type, client_id, redirect_uri, state, scope, code_challenge, code_challenge_method } = req.query;
+  const response_type = queryParam(req.query.response_type);
+  const client_id = queryParam(req.query.client_id);
+  const redirect_uri = queryParam(req.query.redirect_uri);
+  const state = queryParam(req.query.state);
+  const scope = queryParam(req.query.scope);
+  const code_challenge = queryParam(req.query.code_challenge);
+  const code_challenge_method = queryParam(req.query.code_challenge_method);
   const client = oauthClients.get(client_id);
   if (!client) return res.status(400).send('Unknown client_id');
   if (response_type !== 'code') return res.status(400).send('Unsupported response_type');
@@ -586,29 +690,27 @@ app.get('/.well-known/app.json', (req, res) => {
   res.json({ name: 'Deal Analyzer MCP', description: 'ChatGPT app for underwriting, saving, and comparing real estate deals.', mcp_url: `${baseUrl(req)}/mcp`, developer: { name: 'opolyo01' } });
 });
 app.post('/analyze', (req, res) => {
-  try { res.json(calculateDeal(req.body || {})); } catch (error) { res.status(500).json({ error: error.message || 'Failed to analyze deal.' }); }
+  try { res.json(calculateDeal(req.body || {})); } catch (error) { res.status(500).json({ error: errorMessage(error, 'Failed to analyze deal.') }); }
 });
 app.post('/parse-listing', async (req, res) => {
-  try { res.json(await parseListing(req.body || {})); } catch (error) { res.status(500).json({ error: error.message || 'Failed to parse listing.' }); }
+  try { res.json(await parseListing(req.body || {})); } catch (error) { res.status(500).json({ error: errorMessage(error, 'Failed to parse listing.') }); }
 });
 app.post('/compare', (req, res) => {
-  try { res.json(compareDeals(req.body?.deals || [])); } catch (error) { res.status(500).json({ error: error.message || 'Failed to compare deals.' }); }
+  try { res.json(compareDeals(req.body?.deals || [])); } catch (error) { res.status(500).json({ error: errorMessage(error, 'Failed to compare deals.') }); }
 });
 app.post('/saveDeal', (req, res) => {
   try {
     const user = sessionOrBearerUser(req);
-    if (!user) return res.status(401).json({ error: 'unauthorized' });
     const analysis = calculateDeal(req.body || {});
-    const id = saveDealRecord(req.body || {}, analysis, user.id);
-    res.json({ id, analysis, user: { id: user.id, email: user.email } });
-  } catch (error) { res.status(500).json({ error: error.message || 'Failed to save deal.' }); }
+    const id = saveDealRecord(req.body || {}, analysis, user ? user.id : null);
+    res.json({ id, analysis, user: user ? { id: user.id, email: user.email } : null });
+  } catch (error) { res.status(500).json({ error: errorMessage(error, 'Failed to save deal.') }); }
 });
 app.get('/deals', (req, res) => {
   try {
     const user = sessionOrBearerUser(req);
-    if (!user) return res.status(401).json({ error: 'unauthorized' });
-    res.json(getSavedDeals(user.id));
-  } catch (error) { res.status(500).json({ error: error.message || 'Failed to get deals.' }); }
+    res.json(getSavedDeals(user ? user.id : null));
+  } catch (error) { res.status(500).json({ error: errorMessage(error, 'Failed to get deals.') }); }
 });
 app.get('/dashboard', (req, res) => {
   if (fs.existsSync(dashboardPath)) return res.sendFile(dashboardPath);
@@ -635,20 +737,19 @@ app.post('/mcp', async (req, res) => {
       if (name === 'compareDeals') return res.json(jsonRpc(id, buildCompareToolResult(compareDeals(args.deals || []))));
       if (name === 'saveDeal' || name === 'getDeals') {
         const user = sessionOrBearerUser(req);
-        if (!user) return res.status(401).json(jsonRpcError(id, 401, 'Authentication required'));
         if (name === 'saveDeal') {
           const analysis = calculateDeal(args);
-          const savedId = saveDealRecord(args, analysis, user.id);
+          const savedId = saveDealRecord(args, analysis, user ? user.id : null);
           return res.json(jsonRpc(id, { content: [{ type: 'text', text: 'Deal saved successfully' }], structuredContent: { id: savedId, ...analysis } }));
         }
-        const deals = getSavedDeals(user.id);
+        const deals = getSavedDeals(user ? user.id : null);
         return res.json(jsonRpc(id, { content: [{ type: 'text', text: `Found ${deals.length} deals` }], structuredContent: deals }));
       }
       return res.json(jsonRpcError(id, -32601, 'Unknown tool'));
     }
     return res.json(jsonRpcError(id, -32601, 'Unknown method'));
   } catch (error) {
-    return res.json(jsonRpcError(id, -32000, error.message || 'Server error'));
+    return res.json(jsonRpcError(id, -32000, errorMessage(error, 'Server error')));
   }
 });
 

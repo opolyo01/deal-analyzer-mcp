@@ -1,69 +1,244 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Add Deal</title>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body { font-family: Arial; padding: 20px; max-width: 500px; margin: auto; }
-    input, button { margin: 8px 0; padding: 12px; width: 100%; font-size: 16px; }
-    .card { margin-top: 20px; padding: 15px; border-radius: 10px; background: #f4f4f4; }
-    .buy { background: #d4edda; }
-    .hold { background: #fff3cd; }
-    .pass { background: #f8d7da; }
-  </style>
+  <title>Add Deal</title>
+  <link rel="stylesheet" href="/deal-ui.css" />
 </head>
 <body>
-
-<h2>Add Deal</h2>
-
-<input id="price" placeholder="Price" />
-<input id="rent" placeholder="Monthly Rent" />
-<input id="taxes" placeholder="Taxes (yearly)" />
-<input id="insurance" placeholder="Insurance (yearly)" />
-<input id="down" placeholder="Down Payment %" />
-<input id="rate" placeholder="Interest Rate %" />
-
-<button onclick="submitDeal()">Analyze & Save</button>
-
-<div id="result"></div>
-
-<script>
-async function submitDeal() {
-  const payload = {
-    price: +price.value,
-    rent: +rent.value,
-    taxes: +taxes.value,
-    insurance: +insurance.value,
-    downPayment: +down.value,
-    interestRate: +rate.value
-  };
-
-  const res = await fetch('/analyze', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-
-  const data = await res.json();
-
-  await fetch('/saveDeal', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  });
-
-  const cls = data.recommendation?.toLowerCase() || '';
-
-  result.innerHTML = `
-    <div class="card ${cls}">
-      <h3>${data.recommendation}</h3>
-      <p><b>Score:</b> ${data.score}</p>
-      <p><b>Cash Flow:</b> $${data.cashFlow}</p>
-      <p><b>Cap Rate:</b> ${data.capRate}%</p>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">DA</div>
+      <div>
+        <div class="brand-title">Add Deal</div>
+        <div class="brand-subtitle">Analyze and save a rental in one pass</div>
+      </div>
     </div>
-  `;
-}
-</script>
+    <nav class="nav" aria-label="Main navigation">
+      <a href="/dashboard">Dashboard</a>
+      <a href="/deal-widget.html">Quick check</a>
+    </nav>
+  </header>
 
+  <main class="page">
+    <section class="intro">
+      <div class="intro-copy">
+        <h1>Add one deal, get the answer fast.</h1>
+        <p class="lead">Use annual taxes and insurance, monthly rent and HOA, and percentages like 20 for down payment or 6.5 for interest rate.</p>
+      </div>
+      <div class="photo-panel">
+        <img src="https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=900&q=80" alt="Front of a rental house" />
+      </div>
+    </section>
+
+    <section class="workspace">
+      <form class="panel" id="deal-form">
+        <h2>Deal inputs</h2>
+        <div class="form-grid">
+          <div class="field full">
+            <label for="label">Deal label</label>
+            <input id="label" placeholder="Oak Avenue rental" autocomplete="off" />
+          </div>
+          <div class="field full">
+            <label for="address">Address</label>
+            <input id="address" placeholder="123 Oak Ave, Raleigh, NC" />
+          </div>
+          <div class="field">
+            <label for="price">Purchase price</label>
+            <input id="price" inputmode="decimal" placeholder="425000" required />
+          </div>
+          <div class="field">
+            <label for="rent">Monthly rent</label>
+            <input id="rent" inputmode="decimal" placeholder="3200" />
+          </div>
+          <div class="field">
+            <label for="taxes">Annual taxes</label>
+            <input id="taxes" inputmode="decimal" placeholder="6100" />
+          </div>
+          <div class="field">
+            <label for="insurance">Annual insurance</label>
+            <input id="insurance" inputmode="decimal" placeholder="2100" />
+          </div>
+          <div class="field">
+            <label for="hoa">Monthly HOA</label>
+            <input id="hoa" inputmode="decimal" placeholder="0" />
+          </div>
+          <div class="field">
+            <label for="otherMonthlyCosts">Other monthly costs</label>
+            <input id="otherMonthlyCosts" inputmode="decimal" placeholder="0" />
+          </div>
+          <div class="field">
+            <label for="downPaymentPercent">Down payment %</label>
+            <input id="downPaymentPercent" inputmode="decimal" placeholder="20" />
+          </div>
+          <div class="field">
+            <label for="rate">Interest rate %</label>
+            <input id="rate" inputmode="decimal" placeholder="6.5" />
+          </div>
+          <div class="field">
+            <label for="termYears">Loan term</label>
+            <input id="termYears" inputmode="numeric" placeholder="30" />
+          </div>
+          <div class="field">
+            <label for="propertyType">Property type</label>
+            <select id="propertyType">
+              <option value="">Select type</option>
+              <option>Single family</option>
+              <option>Duplex</option>
+              <option>Triplex</option>
+              <option>Multifamily</option>
+              <option>Condo</option>
+              <option>Townhouse</option>
+            </select>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="primary" type="submit" data-action="save">Analyze and save</button>
+          <button type="submit" data-action="analyze">Analyze only</button>
+          <a class="button secondary" href="/dashboard">View dashboard</a>
+        </div>
+        <div class="status" id="status" aria-live="polite"></div>
+      </form>
+
+      <section class="panel" aria-live="polite">
+        <h2>Result</h2>
+        <div id="result">
+          <div class="empty-state">Run an analysis to see the score, cash flow, and return metrics.</div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById('deal-form');
+    const statusEl = document.getElementById('status');
+    let action = 'save';
+
+    form.querySelectorAll('button[type="submit"]').forEach((button) => {
+      button.addEventListener('click', () => {
+        action = button.dataset.action || 'save';
+      });
+    });
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const payload = readPayload();
+      if (!payload.price) {
+        statusEl.textContent = 'Purchase price is required.';
+        return;
+      }
+
+      try {
+        statusEl.textContent = action === 'save' ? 'Analyzing and saving...' : 'Analyzing...';
+        const data = action === 'save' ? await saveDeal(payload) : await analyzeDeal(payload);
+        renderResult(action === 'save' ? data.analysis : data, data.id);
+        statusEl.textContent = action === 'save' ? 'Saved. Open the dashboard to compare it.' : 'Analysis ready.';
+      } catch (error) {
+        statusEl.textContent = error.message || 'Something went wrong.';
+      }
+    });
+
+    function numberValue(id) {
+      const raw = document.getElementById(id).value.trim().replace(/[$,%\s,]/g, '');
+      if (!raw) return null;
+      const value = Number(raw);
+      return Number.isFinite(value) ? value : null;
+    }
+
+    function textValue(id) {
+      return document.getElementById(id).value.trim();
+    }
+
+    function readPayload() {
+      const downPaymentPercent = numberValue('downPaymentPercent');
+      const rate = numberValue('rate');
+      return stripEmpty({
+        label: textValue('label'),
+        address: textValue('address'),
+        price: numberValue('price'),
+        rent: numberValue('rent'),
+        taxes: numberValue('taxes'),
+        insurance: numberValue('insurance'),
+        hoa: numberValue('hoa'),
+        otherMonthlyCosts: numberValue('otherMonthlyCosts'),
+        downPaymentPercent: downPaymentPercent == null ? null : downPaymentPercent / 100,
+        rate: rate == null ? null : rate / 100,
+        termYears: numberValue('termYears'),
+        propertyType: textValue('propertyType')
+      });
+    }
+
+    function stripEmpty(input) {
+      return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== '' && value != null));
+    }
+
+    async function analyzeDeal(payload) {
+      const res = await fetch('/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to analyze deal.');
+      return data;
+    }
+
+    async function saveDeal(payload) {
+      const res = await fetch('/saveDeal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save deal.');
+      return data;
+    }
+
+    function renderResult(analysis, savedId) {
+      const summary = analysis.summary || {};
+      const input = analysis.input || {};
+      const cls = recClass(summary.recommendation);
+      document.getElementById('result').innerHTML = `
+        <div class="recommendation ${cls}">${escapeHtml(summary.recommendation || 'HOLD')} - ${Number(summary.score || 0)}/10</div>
+        <div class="result-grid">
+          <div class="metric"><div class="metric-label">Monthly cash flow</div><div class="metric-value">${currency(summary.monthlyCashFlow)}</div></div>
+          <div class="metric"><div class="metric-label">Break-even rent</div><div class="metric-value">${currency(summary.breakEvenRent)}</div></div>
+          <div class="metric"><div class="metric-label">Cap rate</div><div class="metric-value">${percent(summary.capRate)}</div></div>
+          <div class="metric"><div class="metric-label">Cash-on-cash</div><div class="metric-value">${percent(summary.cashOnCashReturn)}</div></div>
+          <div class="metric"><div class="metric-label">Monthly all-in cost</div><div class="metric-value">${currency(summary.monthlyAllInCost)}</div></div>
+          <div class="metric"><div class="metric-label">Rent used</div><div class="metric-value">${currency(input.rent)}</div></div>
+        </div>
+        ${savedId ? `<p class="status">Saved as ${escapeHtml(savedId)}</p>` : ''}
+      `;
+    }
+
+    function recClass(value) {
+      const rec = String(value || '').toLowerCase();
+      if (rec === 'buy') return 'buy';
+      if (rec === 'pass') return 'pass';
+      return 'hold';
+    }
+
+    function currency(value) {
+      const number = Number(value || 0);
+      const sign = number < 0 ? '-' : '';
+      return sign + '$' + Math.abs(Math.round(number)).toLocaleString('en-US');
+    }
+
+    function percent(value) {
+      return value == null ? '-' : (Number(value) * 100).toFixed(1) + '%';
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[char]));
+    }
+  </script>
 </body>
 </html>

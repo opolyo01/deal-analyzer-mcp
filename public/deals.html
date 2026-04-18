@@ -1,34 +1,26 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Deals</title>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body { font-family: Arial; padding: 20px; }
-    .card { margin: 10px 0; padding: 15px; border-radius: 10px; background: #f4f4f4; }
-  </style>
+  <title>Saved Deals</title>
+  <link rel="stylesheet" href="/deal-ui.css" />
 </head>
 <body>
-
-<h2>Saved Deals</h2>
-<div id="list"></div>
-
-<script>
-async function loadDeals() {
-  const res = await fetch('/deals');
-  const deals = await res.json();
-
-  list.innerHTML = deals.map(d => `
-    <div class="card">
-      <h3>${d.recommendation}</h3>
-      <p>Score: ${d.score}</p>
-      <p>Cash Flow: $${d.cashFlow}</p>
-    </div>
-  `).join('');
-}
-
-loadDeals();
-</script>
-
+  <main class="compact-page">
+    <section class="panel">
+      <h1>Saved deals moved to the dashboard.</h1>
+      <p class="lead">The dashboard now includes the add form, analysis result, and saved deal ranking in one place.</p>
+      <div class="actions">
+        <a class="button primary" href="/dashboard">Open dashboard</a>
+        <a class="button" href="/add.html">Add a deal</a>
+      </div>
+    </section>
+  </main>
+  <script>
+    setTimeout(() => {
+      window.location.href = '/dashboard';
+    }, 700);
+  </script>
 </body>
 </html>

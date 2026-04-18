@@ -43,12 +43,21 @@ Full-stack real estate deal analysis platform:
 
 ```bash
 npm install
+npm run build
 npm start
 ```
 
 Open:
 ```
 http://localhost:3000/dashboard
+```
+
+For TypeScript development:
+
+```bash
+npm run dev
+npm run check
+npm run build
 ```
 
 ---
