@@ -86,7 +86,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 const APP_NAME = 'deal-analyzer-mcp';
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.8.1';
 const DEFAULT_RATE = Number(process.env.DEFAULT_RATE || 0.065);
 const DEFAULT_TERM_YEARS = Number(process.env.DEFAULT_TERM_YEARS || 30);
 const DEFAULT_VACANCY_RATE = Number(process.env.DEFAULT_VACANCY_RATE || 0.05);
@@ -695,6 +695,16 @@ app.get('/', (req, res) => {
   });
 });
 app.get('/health', (req, res) => res.json({ ok: true, app: APP_NAME, version: APP_VERSION }));
+app.get('/debug/auth', (req, res) => {
+  res.json({
+    version: APP_VERSION,
+    googleAuthConfigured,
+    publicBaseUrl: PUBLIC_BASE_URL || null,
+    isLocalOrigin,
+    anonymousModeEnabled: ALLOW_ANONYMOUS_MODE,
+    signedIn: Boolean(sessionOrBearerUser(req))
+  });
+});
 app.get('/.well-known/app.json', (req, res) => {
   res.json({ name: 'Deal Analyzer MCP', description: 'ChatGPT app for underwriting, saving, and comparing real estate deals.', mcp_url: `${baseUrl(req)}/mcp`, developer: { name: 'opolyo01' } });
 });
