@@ -30,8 +30,8 @@
         <h1>Add one deal, get the answer fast.</h1>
         <p class="lead">Use annual taxes and insurance, monthly rent and HOA, and percentages like 20 for down payment or 6.5 for interest rate.</p>
       </div>
-      <div class="photo-panel">
-        <img src="https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=900&q=80" alt="Front of a rental house" />
+      <div class="photo-panel" id="listing-photo" style="display:none">
+        <img id="listing-photo-img" src="" alt="Listing photo" style="width:100%;border-radius:10px;object-fit:cover;max-height:260px" />
       </div>
     </section>
 
@@ -185,6 +185,14 @@
         const sel = document.getElementById('propertyType');
         const match = Array.from(sel.options).find(o => o.value.toLowerCase().includes(data.propertyType.toLowerCase()));
         if (match) sel.value = match.value;
+      }
+      const photoPanel = document.getElementById('listing-photo');
+      const photoImg = document.getElementById('listing-photo-img');
+      if (data.photoUrl) {
+        photoImg.src = data.photoUrl;
+        photoPanel.style.display = '';
+      } else {
+        photoPanel.style.display = 'none';
       }
     }
 

@@ -542,6 +542,7 @@ function extractStructuredDataFromHtml(html: string, sourceUrl = ''): JsonRecord
   const result: JsonRecord = { sourceUrl, address: '', propertyType: '', price: null, rent: null, taxes: null, hoa: null, insurance: null, beds: null, baths: null, sqft: null, parserNotes: [] };
   const metaCandidates = [$('meta[property="og:title"]').attr('content'), $('title').text(), $('meta[name="description"]').attr('content')].filter(Boolean).join(' | ');
   Object.assign(result, parseListingText(metaCandidates, sourceUrl));
+  result.photoUrl = $('meta[property="og:image"]').attr('content') || null;
 
   const scripts = $('script').map((_, el) => ({ type: $(el).attr('type') || '', id: $(el).attr('id') || '', content: $(el).html() || '' })).get();
   for (const { type, id, content } of scripts) {
@@ -579,6 +580,7 @@ function extractStructuredDataFromHtml(html: string, sourceUrl = ''): JsonRecord
     beds: result.beds ?? fallback.beds ?? null,
     baths: result.baths ?? fallback.baths ?? null,
     sqft: result.sqft ?? fallback.sqft ?? null,
+    photoUrl: result.photoUrl || null,
     parserNotes,
     extracted: { bodyTextPreview: bodyText.slice(0, 500) }
   };
