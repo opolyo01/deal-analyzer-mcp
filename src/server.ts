@@ -86,7 +86,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 const APP_NAME = 'deal-analyzer-mcp';
-const APP_VERSION = '1.8.2';
+const APP_VERSION = '1.8.3';
 const DEFAULT_RATE = Number(process.env.DEFAULT_RATE || 0.065);
 const DEFAULT_TERM_YEARS = Number(process.env.DEFAULT_TERM_YEARS || 30);
 const DEFAULT_VACANCY_RATE = Number(process.env.DEFAULT_VACANCY_RATE || 0.05);
@@ -328,6 +328,8 @@ function calculateDeal(rawInput: JsonRecord = {}) {
   const input = normalizeDealInput(rawInput);
   const loanAmount = Math.max(input.price - input.downPaymentAmount, 0);
   const monthlyMortgage = calculateMortgagePayment(loanAmount, input.rate, input.termYears);
+  const monthlyInterest = loanAmount > 0 ? loanAmount * (input.rate / 12) : 0;
+  const monthlyPrincipalPaydown = Math.max(monthlyMortgage - monthlyInterest, 0);
   const monthlyTaxes = annualToMonthly(input.taxes);
   const monthlyInsurance = annualToMonthly(input.insurance);
   const monthlyVacancy = input.rent * input.vacancyRate;
@@ -336,7 +338,9 @@ function calculateDeal(rawInput: JsonRecord = {}) {
   const monthlyManagement = input.rent * input.managementRate;
   const monthlyOperatingExpense = monthlyTaxes + monthlyInsurance + input.hoa + input.otherMonthlyCosts + monthlyVacancy + monthlyRepairs + monthlyCapex + monthlyManagement;
   const monthlyAllInCost = monthlyMortgage + monthlyOperatingExpense;
+  const monthlyCostBeforePrincipal = monthlyOperatingExpense + monthlyInterest;
   const monthlyCashFlow = input.rent - monthlyAllInCost;
+  const monthlyCashFlowBeforePrincipal = input.rent - monthlyCostBeforePrincipal;
   const annualNOI = (input.rent * 12) - (monthlyOperatingExpense * 12);
   const annualDebtService = monthlyMortgage * 12;
   const capRate = input.price > 0 ? annualNOI / input.price : 0;
@@ -393,10 +397,17 @@ function calculateDeal(rawInput: JsonRecord = {}) {
       recommendation,
       breakEvenRent: round(breakEvenRent),
       monthlyMortgage: round(monthlyMortgage),
+      monthlyInterest: round(monthlyInterest),
+      monthlyPrincipalPaydown: round(monthlyPrincipalPaydown),
       monthlyOperatingExpense: round(monthlyOperatingExpense),
       monthlyAllInCost: round(monthlyAllInCost),
+      monthlyCostBeforePrincipal: round(monthlyCostBeforePrincipal),
+      monthlyCashFlowBeforePrincipal: round(monthlyCashFlowBeforePrincipal),
       monthlyExpenseBreakdown: {
         mortgage: round(monthlyMortgage),
+        debtPayment: round(monthlyMortgage),
+        interest: round(monthlyInterest),
+        principalPaydown: round(monthlyPrincipalPaydown),
         taxes: round(monthlyTaxes),
         insurance: round(monthlyInsurance),
         hoa: round(input.hoa),
@@ -545,12 +556,12 @@ function jsonRpc(id: JsonRpcId, result: unknown) { return { jsonrpc: '2.0', id: 
 function jsonRpcError(id: JsonRpcId, code: number, message: string) { return { jsonrpc: '2.0', id: id ?? null, error: { code, message } }; }
 function buildAnalyzeToolResult(result: ReturnType<typeof calculateDeal>, extra: JsonRecord = {}) {
   return {
-    content: [{ type: 'text', text: [`Deal score: ${result.summary.score}/10 (${result.summary.recommendation})`, `Cash flow: ${asCurrency(result.summary.monthlyCashFlow)}/mo`, result.summary.estimatedRent ? `Rent: ${asCurrency(result.input.rent)} (estimated)` : `Rent: ${asCurrency(result.input.rent)}/mo`, `Break-even rent: ${asCurrency(result.summary.breakEvenRent)}/mo`].join('\n') }],
+    content: [{ type: 'text', text: [`Deal score: ${result.summary.score}/10 (${result.summary.recommendation})`, `Cash flow after debt: ${asCurrency(result.summary.monthlyCashFlow)}/mo`, `Cash flow before principal: ${asCurrency(result.summary.monthlyCashFlowBeforePrincipal)}/mo`, result.summary.estimatedRent ? `Rent: ${asCurrency(result.input.rent)} (estimated)` : `Rent: ${asCurrency(result.input.rent)}/mo`, `Break-even rent: ${asCurrency(result.summary.breakEvenRent)}/mo`].join('\n') }],
     structuredContent: { ...result, ...extra }
   };
 }
 function buildCompareToolResult(comparison: ReturnType<typeof compareDeals>) {
-  return { content: [{ type: 'text', text: comparison.analyses.map(item => `${item.rank}. ${item.label} — score ${item.analysis.summary.score}/10, cash flow ${asCurrency(item.analysis.summary.monthlyCashFlow)}/mo`).join('\n') }], structuredContent: comparison };
+  return { content: [{ type: 'text', text: comparison.analyses.map(item => `${item.rank}. ${item.label} — score ${item.analysis.summary.score}/10, cash flow after debt ${asCurrency(item.analysis.summary.monthlyCashFlow)}/mo`).join('\n') }], structuredContent: comparison };
 }
 
 function defaultClient() {

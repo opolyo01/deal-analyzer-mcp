@@ -226,11 +226,13 @@
       document.getElementById('result').innerHTML = `
         <div class="recommendation ${cls}">${escapeHtml(summary.recommendation || 'HOLD')} - ${Number(summary.score || 0)}/10</div>
         <div class="result-grid">
-          <div class="metric"><div class="metric-label">Monthly cash flow</div><div class="metric-value">${currency(summary.monthlyCashFlow)}</div></div>
+          <div class="metric"><div class="metric-label">Cash flow after debt</div><div class="metric-value">${currency(summary.monthlyCashFlow)}</div></div>
+          <div class="metric"><div class="metric-label">Cash flow before principal</div><div class="metric-value">${currency(summary.monthlyCashFlowBeforePrincipal)}</div></div>
+          <div class="metric"><div class="metric-label">Principal paydown</div><div class="metric-value">${currency(summary.monthlyPrincipalPaydown)}</div></div>
+          <div class="metric"><div class="metric-label">Interest portion</div><div class="metric-value">${currency(summary.monthlyInterest)}</div></div>
           <div class="metric"><div class="metric-label">Break-even rent</div><div class="metric-value">${currency(summary.breakEvenRent)}</div></div>
           <div class="metric"><div class="metric-label">Cap rate</div><div class="metric-value">${percent(summary.capRate)}</div></div>
           <div class="metric"><div class="metric-label">Cash-on-cash</div><div class="metric-value">${percent(summary.cashOnCashReturn)}</div></div>
-          <div class="metric"><div class="metric-label">Monthly all-in cost</div><div class="metric-value">${currency(summary.monthlyAllInCost)}</div></div>
           <div class="metric"><div class="metric-label">Rent used</div><div class="metric-value">${currency(input.rent)}</div></div>
         </div>
         ${expenseBreakdownHtml(summary)}
@@ -240,9 +242,12 @@
 
     function expenseBreakdownHtml(summary) {
       const items = summary.monthlyExpenseBreakdown || {};
+      const debtPayment = items.debtPayment ?? items.mortgage ?? summary.monthlyMortgage;
       return `
         <div class="breakdown">
-          <div class="breakdown-row"><span>Mortgage</span><strong>${currency(items.mortgage)}</strong></div>
+          <div class="breakdown-row"><span>Debt payment (P&I)</span><strong>${currency(debtPayment)}</strong></div>
+          <div class="breakdown-row sub"><span>Interest portion</span><strong>${currency(items.interest ?? summary.monthlyInterest)}</strong></div>
+          <div class="breakdown-row sub"><span>Principal paydown</span><strong>${currency(items.principalPaydown ?? summary.monthlyPrincipalPaydown)}</strong></div>
           <div class="breakdown-row"><span>Taxes</span><strong>${currency(items.taxes)}</strong></div>
           <div class="breakdown-row"><span>Insurance</span><strong>${currency(items.insurance)}</strong></div>
           <div class="breakdown-row"><span>HOA</span><strong>${currency(items.hoa)}</strong></div>
@@ -251,8 +256,10 @@
           <div class="breakdown-row"><span>Repairs reserve</span><strong>${currency(items.repairs)}</strong></div>
           <div class="breakdown-row"><span>Capex reserve</span><strong>${currency(items.capex)}</strong></div>
           <div class="breakdown-row"><span>Management</span><strong>${currency(items.management)}</strong></div>
-          <div class="breakdown-row total"><span>Total monthly cost</span><strong>${currency(summary.monthlyAllInCost)}</strong></div>
+          <div class="breakdown-row total"><span>Total monthly cash outflow</span><strong>${currency(summary.monthlyAllInCost)}</strong></div>
+          <div class="breakdown-row total equity"><span>Cost before principal</span><strong>${currency(summary.monthlyCostBeforePrincipal)}</strong></div>
         </div>
+        <p class="breakdown-note">Cash flow before principal treats principal paydown as equity, while cash flow after debt counts the full P&I payment.</p>
       `;
     }
 

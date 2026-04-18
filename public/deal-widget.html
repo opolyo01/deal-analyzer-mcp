@@ -101,7 +101,9 @@
       document.getElementById('result').innerHTML = `
         <div class="recommendation ${cls}">${escapeHtml(summary.recommendation || 'HOLD')} - ${Number(summary.score || 0)}/10</div>
         <div class="result-grid">
-          <div class="metric"><div class="metric-label">Cash flow</div><div class="metric-value">${currency(summary.monthlyCashFlow)}</div></div>
+          <div class="metric"><div class="metric-label">After debt</div><div class="metric-value">${currency(summary.monthlyCashFlow)}</div></div>
+          <div class="metric"><div class="metric-label">Before principal</div><div class="metric-value">${currency(summary.monthlyCashFlowBeforePrincipal)}</div></div>
+          <div class="metric"><div class="metric-label">Principal paydown</div><div class="metric-value">${currency(summary.monthlyPrincipalPaydown)}</div></div>
           <div class="metric"><div class="metric-label">Cap rate</div><div class="metric-value">${percent(summary.capRate)}</div></div>
           <div class="metric"><div class="metric-label">Break-even rent</div><div class="metric-value">${currency(summary.breakEvenRent)}</div></div>
           <div class="metric"><div class="metric-label">Rent used</div><div class="metric-value">${currency(input.rent)}</div></div>

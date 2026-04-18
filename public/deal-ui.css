@@ -339,6 +339,23 @@ a:focus {
   font-weight: 850;
 }
 
+.breakdown-row.sub {
+  color: var(--muted);
+  background: #f8f6f1;
+  padding-left: 24px;
+}
+
+.breakdown-row.equity {
+  background: #edf6f1;
+}
+
+.breakdown-note {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 8px 0 0;
+}
+
 .recommendation {
   display: inline-flex;
   align-items: center;
