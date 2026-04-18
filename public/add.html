@@ -284,6 +284,7 @@
         body: JSON.stringify(payload)
       });
       const data = await res.json();
+      if (res.status === 401 && data.loginUrl) { window.location.href = data.loginUrl; return; }
       if (!res.ok) throw new Error(data.error || 'Failed to save deal.');
       return data;
     }

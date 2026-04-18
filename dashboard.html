@@ -22,6 +22,7 @@
         <a href="/deal-widget.html">Quick check</a>
         <a href="/agent.html">Agent profile</a>
         <span id="user-label" style="opacity:0.6;font-size:0.85em;align-self:center"></span>
+        <a href="/auth/google" id="signin-link" style="display:none">Sign in to save</a>
         <a href="/logout" id="logout-link" style="display:none">Log out</a>
       </nav>
     </header>
@@ -144,6 +145,8 @@
       if (user) {
         document.getElementById('user-label').textContent = user.displayName || user.email || '';
         document.getElementById('logout-link').style.display = '';
+      } else {
+        document.getElementById('signin-link').style.display = '';
       }
     });
 

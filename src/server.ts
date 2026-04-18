@@ -251,12 +251,7 @@ function bearerUser(req: Request): AppUser | null {
 function sessionOrBearerUser(req: Request): AppUser | null {
   return currentUser(req) || bearerUser(req);
 }
-function requireDashboardUser(req: express.Request, res: express.Response, next: express.NextFunction) {
-  if (ALLOW_ANONYMOUS_MODE || sessionOrBearerUser(req)) return next();
-  if (!googleAuthConfigured) return res.status(503).send('Google OAuth is not configured');
-  req.session.returnTo = req.originalUrl;
-  return res.redirect('/auth/google');
-}
+
 
 function round(value: number, digits = 2) {
   return Number(Number(value || 0).toFixed(digits));
@@ -815,7 +810,7 @@ app.post('/compare', (req, res) => {
 app.post('/saveDeal', (req, res) => {
   try {
     const user = sessionOrBearerUser(req);
-    if (!user && !ALLOW_ANONYMOUS_MODE) return res.status(401).json({ error: 'unauthorized' });
+    if (!user && !ALLOW_ANONYMOUS_MODE) return res.status(401).json({ error: 'login_required', loginUrl: '/auth/google' });
     const analysis = calculateDeal(req.body || {});
     const id = saveDealRecord(req.body || {}, analysis, user ? user.id : null);
     res.json({ id, analysis, user: user ? { id: user.id, email: user.email } : null });
@@ -825,14 +820,14 @@ app.get('/agent-config', (_req, res) => { res.json(AGENT_CONFIG); });
 app.get('/deals', (req, res) => {
   try {
     const user = sessionOrBearerUser(req);
-    if (!user && !ALLOW_ANONYMOUS_MODE) return res.status(401).json({ error: 'unauthorized' });
+    if (!user && !ALLOW_ANONYMOUS_MODE) return res.json([]);
     res.json(getSavedDeals(user ? user.id : null));
   } catch (error) { res.status(500).json({ error: errorMessage(error, 'Failed to get deals.') }); }
 });
 app.delete('/deals/:id', (req, res) => {
   try {
     const user = sessionOrBearerUser(req);
-    if (!user && !ALLOW_ANONYMOUS_MODE) return res.status(401).json({ error: 'unauthorized' });
+    if (!user && !ALLOW_ANONYMOUS_MODE) return res.status(401).json({ error: 'login_required', loginUrl: '/auth/google' });
     const userId = user ? user.id : null;
     const existing = db.prepare('SELECT * FROM deals WHERE id = ?').get(req.params.id) as { userId: string | null } | undefined;
     if (!existing) return res.status(404).json({ error: 'not found' });
@@ -841,7 +836,7 @@ app.delete('/deals/:id', (req, res) => {
     res.json({ deleted: req.params.id });
   } catch (error) { res.status(500).json({ error: errorMessage(error, 'Failed to delete deal.') }); }
 });
-app.get('/dashboard', requireDashboardUser, (req, res) => {
+app.get('/dashboard', (_req, res) => {
   if (fs.existsSync(dashboardPath)) return res.sendFile(dashboardPath);
   return res.type('html').send('<html><body><h2>Dashboard missing</h2><p>Create dashboard.html to render saved deals.</p></body></html>');
 });
