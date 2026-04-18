@@ -97,7 +97,8 @@ const PORT = Number(process.env.PORT || 3000);
 const dashboardPath = path.join(projectRoot, 'dashboard.html');
 const PUBLIC_BASE_URL = normalizeBaseUrl(process.env.PUBLIC_BASE_URL);
 const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || (PUBLIC_BASE_URL ? `${PUBLIC_BASE_URL}/auth/google/callback` : '/auth/google/callback');
-const ALLOW_ANONYMOUS_MODE = process.env.ALLOW_ANONYMOUS_MODE === 'true';
+const isLocalOrigin = !PUBLIC_BASE_URL || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(PUBLIC_BASE_URL);
+const ALLOW_ANONYMOUS_MODE = process.env.ALLOW_ANONYMOUS_MODE === 'true' && isLocalOrigin;
 
 const db = new Database(path.join(projectRoot, 'deals.db'));
 db.prepare(`
