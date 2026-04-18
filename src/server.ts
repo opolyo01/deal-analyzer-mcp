@@ -124,7 +124,8 @@ if (!dealColumns.find(c => c.name === 'userId')) {
 }
 
 function configuredSecret(value: string | undefined) {
-  return Boolean(value && !value.startsWith('replace-with-'));
+  if (!value) return false;
+  return !['replace-with-', 'paste-your-', 'your-real-', 'your-client-', 'your-secret'].some(prefix => value.startsWith(prefix));
 }
 
 function normalizeBaseUrl(value: string | undefined) {
