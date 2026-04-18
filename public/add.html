@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Add Deal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: Arial; padding: 20px; max-width: 500px; margin: auto; }
+    input, button { margin: 8px 0; padding: 12px; width: 100%; font-size: 16px; }
+    .card { margin-top: 20px; padding: 15px; border-radius: 10px; background: #f4f4f4; }
+    .buy { background: #d4edda; }
+    .hold { background: #fff3cd; }
+    .pass { background: #f8d7da; }
+  </style>
+</head>
+<body>
+
+<h2>Add Deal</h2>
+
+<input id="price" placeholder="Price" />
+<input id="rent" placeholder="Monthly Rent" />
+<input id="taxes" placeholder="Taxes (yearly)" />
+<input id="insurance" placeholder="Insurance (yearly)" />
+<input id="down" placeholder="Down Payment %" />
+<input id="rate" placeholder="Interest Rate %" />
+
+<button onclick="submitDeal()">Analyze & Save</button>
+
+<div id="result"></div>
+
+<script>
+async function submitDeal() {
+  const payload = {
+    price: +price.value,
+    rent: +rent.value,
+    taxes: +taxes.value,
+    insurance: +insurance.value,
+    downPayment: +down.value,
+    interestRate: +rate.value
+  };
+
+  const res = await fetch('/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+
+  await fetch('/saveDeal', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+
+  const cls = data.recommendation?.toLowerCase() || '';
+
+  result.innerHTML = `
+    <div class="card ${cls}">
+      <h3>${data.recommendation}</h3>
+      <p><b>Score:</b> ${data.score}</p>
+      <p><b>Cash Flow:</b> $${data.cashFlow}</p>
+      <p><b>Cap Rate:</b> ${data.capRate}%</p>
+    </div>
+  `;
+}
+</script>
+
+</body>
+</html>
