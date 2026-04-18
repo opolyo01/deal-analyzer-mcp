@@ -35,6 +35,14 @@
     </section>
 
     <section class="workspace">
+      <div class="panel" id="import-bar">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input id="listing-url" type="url" placeholder="Paste a Zillow or Redfin URL to auto-fill the form" style="flex:1;min-width:200px" />
+          <button type="button" id="import-btn" class="primary">Import</button>
+        </div>
+        <div class="status" id="import-status" aria-live="polite"></div>
+      </div>
+
       <form class="panel" id="deal-form">
         <h2>Deal inputs</h2>
         <div class="form-grid">
@@ -135,6 +143,47 @@
         document.getElementById('logout-link').style.display = '';
       }
     });
+
+    document.getElementById('import-btn').addEventListener('click', async () => {
+      const url = document.getElementById('listing-url').value.trim();
+      const importStatus = document.getElementById('import-status');
+      if (!url) { importStatus.textContent = 'Paste a listing URL first.'; return; }
+      importStatus.textContent = 'Fetching listing…';
+      document.getElementById('import-btn').disabled = true;
+      try {
+        const res = await fetch('/parse-listing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to parse listing.');
+        fillForm(data);
+        importStatus.textContent = 'Form filled — review and adjust before analyzing.';
+      } catch (err) {
+        importStatus.textContent = err.message || 'Could not parse that URL.';
+      } finally {
+        document.getElementById('import-btn').disabled = false;
+      }
+    });
+
+    function fillForm(data) {
+      const setField = (id, value) => {
+        if (value == null || value === '') return;
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+      };
+      setField('address', data.address);
+      setField('price', data.price);
+      setField('rent', data.rent);
+      setField('taxes', data.taxes);
+      setField('label', data.address || '');
+      if (data.propertyType) {
+        const sel = document.getElementById('propertyType');
+        const match = Array.from(sel.options).find(o => o.value.toLowerCase().includes(data.propertyType.toLowerCase()));
+        if (match) sel.value = match.value;
+      }
+    }
 
     const form = document.getElementById('deal-form');
     const statusEl = document.getElementById('status');
