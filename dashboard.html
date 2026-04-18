@@ -141,12 +141,17 @@
   </div>
 
   <script>
+    let signedIn = false;
     fetch('/whoami').then(r => r.json()).then(user => {
       if (user) {
+        signedIn = true;
         document.getElementById('user-label').textContent = user.displayName || user.email || '';
         document.getElementById('logout-link').style.display = '';
+        loadDeals().catch(() => { renderStats([]); renderDeals([]); });
       } else {
         document.getElementById('signin-link').style.display = '';
+        renderStats([]);
+        document.getElementById('deal-list').innerHTML = '<div class="empty-state"><a href="/auth/google">Sign in</a> to save and view your deals.</div>';
       }
     });
 
@@ -412,10 +417,6 @@
       }[char]));
     }
 
-    loadDeals().catch(() => {
-      renderStats([]);
-      renderDeals([]);
-    });
   </script>
 </body>
 </html>
