@@ -775,15 +775,7 @@ app.post('/token', (req, res) => {
   return res.status(400).json({ error: 'unsupported_grant_type' });
 });
 
-app.get('/', (req, res) => {
-  res.json({
-    name: APP_NAME,
-    version: APP_VERSION,
-    endpoints: {
-      mcp: '/mcp', health: '/health', analyze: '/analyze', parseListing: '/parse-listing', compare: '/compare', saveDeal: '/saveDeal', deals: '/deals', dashboard: '/dashboard', authorize: '/authorize', token: '/token', register: '/register'
-    }
-  });
-});
+app.get('/', (_req, res) => res.redirect('/dashboard'));
 app.get('/health', (req, res) => res.json({ ok: true, app: APP_NAME, version: APP_VERSION }));
 app.get('/debug/auth', (req, res) => {
   res.json({
