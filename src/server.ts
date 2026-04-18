@@ -97,6 +97,7 @@ const PORT = Number(process.env.PORT || 3000);
 const dashboardPath = path.join(projectRoot, 'dashboard.html');
 const PUBLIC_BASE_URL = normalizeBaseUrl(process.env.PUBLIC_BASE_URL);
 const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || (PUBLIC_BASE_URL ? `${PUBLIC_BASE_URL}/auth/google/callback` : '/auth/google/callback');
+const ALLOW_ANONYMOUS_MODE = process.env.ALLOW_ANONYMOUS_MODE === 'true';
 
 const db = new Database(path.join(projectRoot, 'deals.db'));
 db.prepare(`
@@ -238,6 +239,12 @@ function bearerUser(req: Request): AppUser | null {
 }
 function sessionOrBearerUser(req: Request): AppUser | null {
   return currentUser(req) || bearerUser(req);
+}
+function requireDashboardUser(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (ALLOW_ANONYMOUS_MODE || sessionOrBearerUser(req)) return next();
+  if (!googleAuthConfigured) return res.status(503).send('Google OAuth is not configured');
+  req.session.returnTo = req.originalUrl;
+  return res.redirect('/auth/google');
 }
 
 function round(value: number, digits = 2) {
@@ -702,6 +709,7 @@ app.post('/compare', (req, res) => {
 app.post('/saveDeal', (req, res) => {
   try {
     const user = sessionOrBearerUser(req);
+    if (!user && !ALLOW_ANONYMOUS_MODE) return res.status(401).json({ error: 'unauthorized' });
     const analysis = calculateDeal(req.body || {});
     const id = saveDealRecord(req.body || {}, analysis, user ? user.id : null);
     res.json({ id, analysis, user: user ? { id: user.id, email: user.email } : null });
@@ -710,10 +718,11 @@ app.post('/saveDeal', (req, res) => {
 app.get('/deals', (req, res) => {
   try {
     const user = sessionOrBearerUser(req);
+    if (!user && !ALLOW_ANONYMOUS_MODE) return res.status(401).json({ error: 'unauthorized' });
     res.json(getSavedDeals(user ? user.id : null));
   } catch (error) { res.status(500).json({ error: errorMessage(error, 'Failed to get deals.') }); }
 });
-app.get('/dashboard', (req, res) => {
+app.get('/dashboard', requireDashboardUser, (req, res) => {
   if (fs.existsSync(dashboardPath)) return res.sendFile(dashboardPath);
   return res.type('html').send('<html><body><h2>Dashboard missing</h2><p>Create dashboard.html to render saved deals.</p></body></html>');
 });
@@ -738,6 +747,7 @@ app.post('/mcp', async (req, res) => {
       if (name === 'compareDeals') return res.json(jsonRpc(id, buildCompareToolResult(compareDeals(args.deals || []))));
       if (name === 'saveDeal' || name === 'getDeals') {
         const user = sessionOrBearerUser(req);
+        if (!user && !ALLOW_ANONYMOUS_MODE) return res.status(401).json(jsonRpcError(id, 401, 'Authentication required'));
         if (name === 'saveDeal') {
           const analysis = calculateDeal(args);
           const savedId = saveDealRecord(args, analysis, user ? user.id : null);
