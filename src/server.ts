@@ -99,6 +99,16 @@ const PUBLIC_BASE_URL = normalizeBaseUrl(process.env.PUBLIC_BASE_URL);
 const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || (PUBLIC_BASE_URL ? `${PUBLIC_BASE_URL}/auth/google/callback` : '/auth/google/callback');
 const isLocalOrigin = !PUBLIC_BASE_URL || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(PUBLIC_BASE_URL);
 const ALLOW_ANONYMOUS_MODE = process.env.ALLOW_ANONYMOUS_MODE === 'true' && isLocalOrigin;
+const AGENT_CONFIG = {
+  name: process.env.AGENT_NAME || '',
+  photo: process.env.AGENT_PHOTO_URL || '',
+  brokerage: process.env.AGENT_BROKERAGE || '',
+  phone: process.env.AGENT_PHONE || '',
+  email: process.env.AGENT_EMAIL || '',
+  bio: process.env.AGENT_BIO || '',
+  zillowUrl: process.env.AGENT_ZILLOW_URL || '',
+  licenseNumber: process.env.AGENT_LICENSE || '',
+};
 
 const db = new Database(path.join(projectRoot, 'deals.db'));
 db.prepare(`
@@ -809,6 +819,7 @@ app.post('/saveDeal', (req, res) => {
     res.json({ id, analysis, user: user ? { id: user.id, email: user.email } : null });
   } catch (error) { res.status(500).json({ error: errorMessage(error, 'Failed to save deal.') }); }
 });
+app.get('/agent-config', (_req, res) => { res.json(AGENT_CONFIG); });
 app.get('/deals', (req, res) => {
   try {
     const user = sessionOrBearerUser(req);

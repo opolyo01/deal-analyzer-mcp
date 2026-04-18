@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agent Profile</title>
+  <link rel="stylesheet" href="/deal-ui.css" />
+  <style>
+    .profile-shell {
+      max-width: 720px;
+      margin: 48px auto;
+      padding: 0 24px 64px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .profile-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 32px;
+    }
+    .profile-header {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+    }
+    .profile-photo {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--line);
+      flex-shrink: 0;
+      background: var(--page);
+    }
+    .profile-photo-placeholder {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: var(--soft-green);
+      border: 3px solid var(--line);
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--green);
+    }
+    .profile-name {
+      font-size: 1.6rem;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+    .profile-brokerage {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-top: 4px;
+    }
+    .profile-license {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-top: 2px;
+    }
+    .profile-contact {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .contact-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--page);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 7px 13px;
+      font-size: 0.9rem;
+      text-decoration: none;
+      color: var(--ink);
+    }
+    .contact-chip:hover { border-color: #bdb5a8; }
+    .contact-chip.primary {
+      background: var(--soft-green);
+      border-color: var(--green);
+      color: var(--green);
+      font-weight: 700;
+    }
+    .section-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .bio-text {
+      line-height: 1.7;
+      color: var(--ink);
+      white-space: pre-wrap;
+    }
+    .setup-notice {
+      background: var(--soft-gold);
+      border: 1px solid #e8d5a0;
+      border-radius: 10px;
+      padding: 16px 20px;
+      font-size: 0.9rem;
+      color: #7a5c10;
+      display: none;
+    }
+    .setup-notice code {
+      background: rgba(0,0,0,0.07);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: monospace;
+    }
+    @media (max-width: 560px) {
+      .profile-header { flex-direction: column; align-items: center; text-align: center; }
+      .profile-contact { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">DA</div>
+        <div>
+          <div class="brand-title">Deal Analyzer</div>
+          <div class="brand-subtitle">Rental underwriting without a spreadsheet</div>
+        </div>
+      </div>
+      <nav class="nav" aria-label="Main navigation">
+        <a href="/dashboard">Dashboard</a>
+        <a href="/add.html">Add deal</a>
+        <a href="/deal-widget.html">Quick check</a>
+        <a href="/agent.html" aria-current="page">Agent profile</a>
+        <span id="user-label" style="opacity:0.6;font-size:0.85em;align-self:center"></span>
+        <a href="/logout" id="logout-link" style="display:none">Log out</a>
+      </nav>
+    </header>
+
+    <main>
+      <div class="profile-shell">
+        <div id="setup-notice" class="setup-notice"></div>
+
+        <div class="profile-card">
+          <div class="profile-header">
+            <div id="photo-wrap"></div>
+            <div style="flex:1;min-width:0">
+              <div class="profile-name" id="agent-name">—</div>
+              <div class="profile-brokerage" id="agent-brokerage"></div>
+              <div class="profile-license" id="agent-license"></div>
+              <div class="profile-contact" id="agent-contact"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-card" id="bio-card" style="display:none">
+          <div class="section-title">About</div>
+          <div class="bio-text" id="agent-bio"></div>
+        </div>
+
+        <div class="profile-card" style="text-align:center;padding:24px">
+          <div class="section-title">Ready to analyze a deal together?</div>
+          <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:8px">
+            <a class="button primary" href="/add.html">Analyze a deal</a>
+            <a class="button" href="/dashboard">View saved deals</a>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    fetch('/whoami').then(r => r.json()).then(user => {
+      if (user) {
+        document.getElementById('user-label').textContent = user.displayName || user.email || '';
+        document.getElementById('logout-link').style.display = '';
+      }
+    });
+
+    fetch('/agent-config').then(r => r.json()).then(cfg => {
+      const missing = !cfg.name && !cfg.photo && !cfg.bio;
+
+      if (missing) {
+        const notice = document.getElementById('setup-notice');
+        notice.style.display = 'block';
+        notice.innerHTML = `
+          <strong>Profile not configured.</strong> Add these environment variables in Railway to populate this page:<br><br>
+          <code>AGENT_NAME</code> &nbsp; <code>AGENT_PHOTO_URL</code> &nbsp; <code>AGENT_BROKERAGE</code><br>
+          <code>AGENT_PHONE</code> &nbsp; <code>AGENT_EMAIL</code> &nbsp; <code>AGENT_BIO</code><br>
+          <code>AGENT_ZILLOW_URL</code> &nbsp; <code>AGENT_LICENSE</code>
+        `;
+      }
+
+      // Photo or initials placeholder
+      const photoWrap = document.getElementById('photo-wrap');
+      if (cfg.photo) {
+        photoWrap.innerHTML = `<img class="profile-photo" src="${escHtml(cfg.photo)}" alt="Profile photo" />`;
+      } else if (cfg.name) {
+        const initials = cfg.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+        photoWrap.innerHTML = `<div class="profile-photo-placeholder">${escHtml(initials)}</div>`;
+      }
+
+      document.getElementById('agent-name').textContent = cfg.name || 'Agent Name';
+      if (cfg.brokerage) document.getElementById('agent-brokerage').textContent = cfg.brokerage;
+      if (cfg.licenseNumber) document.getElementById('agent-license').textContent = `License #${cfg.licenseNumber}`;
+
+      const contact = document.getElementById('agent-contact');
+      const chips = [];
+      if (cfg.zillowUrl) chips.push(`<a class="contact-chip primary" href="${escHtml(cfg.zillowUrl)}" target="_blank" rel="noopener">&#x2605; View on Zillow</a>`);
+      if (cfg.phone) chips.push(`<a class="contact-chip" href="tel:${escHtml(cfg.phone)}">&#x260E; ${escHtml(cfg.phone)}</a>`);
+      if (cfg.email) chips.push(`<a class="contact-chip" href="mailto:${escHtml(cfg.email)}">&#x2709; ${escHtml(cfg.email)}</a>`);
+      contact.innerHTML = chips.join('');
+
+      if (cfg.bio) {
+        document.getElementById('agent-bio').textContent = cfg.bio;
+        document.getElementById('bio-card').style.display = '';
+      }
+    });
+
+    function escHtml(v) {
+      return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+  </script>
+</body>
+</html>
