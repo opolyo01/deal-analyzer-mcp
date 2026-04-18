@@ -1,19 +1,13 @@
 {
   "name": "deal-analyzer-mcp",
-  "version": "1.1.0",
-  "description": "MCP-style real estate deal analyzer with underwriting, listing parsing, and optional LLM explanations",
+  "version": "1.2.2",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
-  },
-  "engines": {
-    "node": ">=18"
+    "start": "node server.js"
   },
   "dependencies": {
     "axios": "^1.8.4",
     "cheerio": "^1.0.0",
-    "express": "^4.21.2",
-    "openai": "^4.104.0"
+    "express": "^4.21.2"
   }
 }
