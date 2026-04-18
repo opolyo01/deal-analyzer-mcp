@@ -18,6 +18,8 @@
     <nav class="nav" aria-label="Main navigation">
       <a href="/dashboard">Dashboard</a>
       <a href="/deal-widget.html">Quick check</a>
+      <span id="user-label" style="opacity:0.6;font-size:0.85em;align-self:center"></span>
+      <a href="/logout" id="logout-link" style="display:none">Log out</a>
     </nav>
   </header>
 
@@ -127,6 +129,13 @@
   </main>
 
   <script>
+    fetch('/whoami').then(r => r.json()).then(user => {
+      if (user) {
+        document.getElementById('user-label').textContent = user.displayName || user.email || '';
+        document.getElementById('logout-link').style.display = '';
+      }
+    });
+
     const form = document.getElementById('deal-form');
     const statusEl = document.getElementById('status');
     let action = 'save';
