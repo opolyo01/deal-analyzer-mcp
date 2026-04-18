@@ -12,8 +12,8 @@ interface DealRow {
   createdAt: string;
 }
 
-const projectRoot = path.resolve(__dirname, '..');
-const db = new Database(path.join(projectRoot, 'deals.db'));
+const dbPath = process.env.DATABASE_PATH ?? path.join(path.resolve(__dirname, '..'), 'deals.db');
+const db = new Database(dbPath);
 
 db.prepare(`
 CREATE TABLE IF NOT EXISTS deals (
