@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Deal Analyzer</title>
+  <title>Saved Deals — Deal Analyzer</title>
   <link rel="stylesheet" href="/deal-ui.css" />
 </head>
 <body>
@@ -17,32 +17,26 @@
         </div>
       </div>
       <nav class="nav" aria-label="Main navigation">
-        <a href="/dashboard">Dashboard</a>
-        <a href="/add.html">Add deal</a>
-        <a href="/deal-widget.html">Quick check</a>
-        <a href="/agent.html">Agent profile</a>
+        <a href="/">Home</a>
+        <a href="/deal-widget.html">Quick Check</a>
+        <a href="/add.html">Full Analysis</a>
+        <a href="/dashboard" aria-current="page">Saved Deals</a>
+        <a href="/agent.html">Talk to Tonya</a>
         <span id="user-label" style="opacity:0.6;font-size:0.85em;align-self:center"></span>
-        <a href="/auth/google" id="signin-link" style="display:none">Sign in to save</a>
+        <a href="/auth/google" id="signin-link" style="display:none">Sign in</a>
         <a href="/logout" id="logout-link" style="display:none">Log out</a>
       </nav>
     </header>
 
     <main class="page">
-      <section class="intro">
-        <div class="intro-copy">
-          <h1>Run the numbers, save the winners.</h1>
-          <p class="lead">Enter price, rent, debt, and operating costs. The model scores cash flow, cap rate, cash-on-cash return, and debt coverage, then keeps your saved deals ranked below.</p>
-        </div>
-        <div class="photo-panel">
-          <img src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=900&q=80" alt="Modern house exterior" />
-        </div>
-      </section>
+      <h1 style="margin-bottom:4px">Saved Deals</h1>
+      <p class="lead" style="margin-bottom:24px">Your ranked pipeline. <a href="/add.html">Add a new deal →</a></p>
 
       <section class="stats" id="stats" aria-label="Saved deal summary"></section>
 
       <section class="workspace">
         <form class="panel" id="deal-form">
-          <h2>Add a deal</h2>
+          <h2>Quick entry</h2>
           <div class="form-grid">
             <div class="field full">
               <label for="label">Deal label</label>

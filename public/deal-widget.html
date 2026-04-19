@@ -3,49 +3,82 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Quick Deal Check</title>
+  <title>Quick Check — Deal Analyzer</title>
   <link rel="stylesheet" href="/deal-ui.css" />
 </head>
 <body>
-  <main class="compact-page">
-    <section class="panel">
-      <h1>Quick check</h1>
-      <p class="lead">Use this for a fast pass before saving a full deal.</p>
-
-      <form id="quick-form" style="margin-top: 18px;">
-        <div class="form-grid">
-          <div class="field">
-            <label for="price">Purchase price</label>
-            <input id="price" inputmode="decimal" placeholder="350000" required />
-          </div>
-          <div class="field">
-            <label for="rent">Monthly rent</label>
-            <input id="rent" inputmode="decimal" placeholder="2850" />
-          </div>
-          <div class="field">
-            <label for="taxes">Annual taxes</label>
-            <input id="taxes" inputmode="decimal" placeholder="5200" />
-          </div>
-          <div class="field">
-            <label for="insurance">Annual insurance</label>
-            <input id="insurance" inputmode="decimal" placeholder="1800" />
-          </div>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">DA</div>
+        <div>
+          <div class="brand-title">Deal Analyzer</div>
+          <div class="brand-subtitle">Rental underwriting without a spreadsheet</div>
         </div>
-        <div class="actions">
-          <button class="primary" type="submit">Analyze</button>
-          <a class="button secondary" href="/add.html">Add full deal</a>
-          <a class="button" href="/dashboard">Dashboard</a>
-        </div>
-        <div class="status" id="status" aria-live="polite"></div>
-      </form>
-
-      <div class="compact-result" id="result">
-        <div class="empty-state">Enter a price to calculate a quick score.</div>
       </div>
-    </section>
-  </main>
+      <nav class="nav" aria-label="Main navigation">
+        <a href="/">Home</a>
+        <a href="/deal-widget.html" aria-current="page">Quick Check</a>
+        <a href="/add.html">Full Analysis</a>
+        <a href="/dashboard">Saved Deals</a>
+        <a href="/agent.html">Talk to Tonya</a>
+        <span id="user-label" style="opacity:0.6;font-size:0.85em;align-self:center"></span>
+        <a href="/auth/google" id="signin-link" style="display:none">Sign in</a>
+        <a href="/logout" id="logout-link" style="display:none">Log out</a>
+      </nav>
+    </header>
+
+    <main>
+      <div class="compact-page">
+        <section class="panel">
+          <h1>Quick Check</h1>
+          <p class="lead">A fast first pass — enter price and rent for an instant score.</p>
+
+          <form id="quick-form" style="margin-top: 18px;">
+            <div class="form-grid">
+              <div class="field">
+                <label for="price">Purchase price</label>
+                <input id="price" inputmode="decimal" placeholder="350000" required />
+              </div>
+              <div class="field">
+                <label for="rent">Monthly rent</label>
+                <input id="rent" inputmode="decimal" placeholder="2850" />
+              </div>
+              <div class="field">
+                <label for="taxes">Annual taxes</label>
+                <input id="taxes" inputmode="decimal" placeholder="5200" />
+              </div>
+              <div class="field">
+                <label for="insurance">Annual insurance</label>
+                <input id="insurance" inputmode="decimal" placeholder="1800" />
+              </div>
+            </div>
+            <div class="actions">
+              <button class="primary" type="submit">Analyze</button>
+              <a class="button" href="/add.html">Full Analysis</a>
+              <a class="button secondary" href="/dashboard">Saved Deals</a>
+            </div>
+            <div class="status" id="status" aria-live="polite"></div>
+          </form>
+
+          <div class="compact-result" id="result">
+            <div class="empty-state">Enter a price to calculate a quick score.</div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
 
   <script>
+    fetch('/whoami').then(r => r.json()).then(user => {
+      if (user) {
+        document.getElementById('user-label').textContent = user.displayName || user.email || '';
+        document.getElementById('logout-link').style.display = '';
+      } else {
+        document.getElementById('signin-link').style.display = '';
+      }
+    });
+
     document.getElementById('quick-form').addEventListener('submit', async (event) => {
       event.preventDefault();
       const payload = readPayload();
@@ -107,6 +140,11 @@
           <div class="metric"><div class="metric-label">Cap rate</div><div class="metric-value">${percent(summary.capRate)}</div></div>
           <div class="metric"><div class="metric-label">Break-even rent</div><div class="metric-value">${currency(summary.breakEvenRent)}</div></div>
           <div class="metric"><div class="metric-label">Rent used</div><div class="metric-value">${currency(input.rent)}</div></div>
+        </div>
+        <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:10px">
+          <a href="/add.html" class="button primary">Full Analysis</a>
+          <a href="/dashboard" class="button">Save this deal</a>
+          <a href="/agent.html" class="button secondary">Talk to Tonya</a>
         </div>
       `;
     }

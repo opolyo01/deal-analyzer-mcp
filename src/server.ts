@@ -1092,7 +1092,7 @@ app.post('/token', (req, res) => {
   return res.status(400).json({ error: 'unsupported_grant_type' });
 });
 
-app.get('/', (_req, res) => res.redirect('/dashboard'));
+app.get('/', (_req, res) => res.sendFile(path.join(projectRoot, 'public', 'index.html')));
 app.get('/health', (req, res) => res.json({ ok: true, app: APP_NAME, version: APP_VERSION }));
 app.get('/debug/auth', (req, res) => {
   const auth = typeof req.headers.authorization === 'string' ? req.headers.authorization : '';

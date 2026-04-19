@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Agent Profile</title>
+  <title>Talk to Tonya — Deal Analyzer</title>
   <link rel="stylesheet" href="/deal-ui.css" />
   <style>
     .profile-shell {
@@ -132,11 +132,13 @@
         </div>
       </div>
       <nav class="nav" aria-label="Main navigation">
-        <a href="/dashboard">Dashboard</a>
-        <a href="/add.html">Add deal</a>
-        <a href="/deal-widget.html">Quick check</a>
-        <a href="/agent.html" aria-current="page">Agent profile</a>
+        <a href="/">Home</a>
+        <a href="/deal-widget.html">Quick Check</a>
+        <a href="/add.html">Full Analysis</a>
+        <a href="/dashboard">Saved Deals</a>
+        <a href="/agent.html" aria-current="page">Talk to Tonya</a>
         <span id="user-label" style="opacity:0.6;font-size:0.85em;align-self:center"></span>
+        <a href="/auth/google" id="signin-link" style="display:none">Sign in</a>
         <a href="/logout" id="logout-link" style="display:none">Log out</a>
       </nav>
     </header>
@@ -165,8 +167,9 @@
         <div class="profile-card" style="text-align:center;padding:24px">
           <div class="section-title">Ready to analyze a deal together?</div>
           <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:8px">
-            <a class="button primary" href="/add.html">Analyze a deal</a>
-            <a class="button" href="/dashboard">View saved deals</a>
+            <a class="button primary" href="/deal-widget.html">Quick Check</a>
+            <a class="button" href="/add.html">Full Analysis</a>
+            <a class="button secondary" href="/dashboard">Saved Deals</a>
           </div>
         </div>
       </div>

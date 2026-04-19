@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Deal Analyzer — Rental underwriting with local agent guidance</title>
+  <meta name="description" content="Analyze any rental deal in seconds. Import from Redfin or Zillow, save your best opportunities, and connect with a local investor-friendly agent." />
+  <link rel="stylesheet" href="/deal-ui.css" />
+  <style>
+    /* ── Hero ── */
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr minmax(280px, 380px);
+      gap: 24px;
+      align-items: start;
+      padding: 48px 0 36px;
+    }
+    .hero-copy { display: flex; flex-direction: column; gap: 20px; }
+    .hero h1 { font-size: 2.6rem; line-height: 1.1; margin: 0; }
+    .hero h1 em { font-style: normal; color: var(--green); }
+    .hero-sub { font-size: 1.1rem; color: var(--muted); line-height: 1.6; margin: 0; max-width: 520px; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+    .hero-actions a { min-width: 160px; text-align: center; }
+
+    /* ── Agent card ── */
+    .agent-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .agent-card-header { display: flex; gap: 16px; align-items: flex-start; }
+    .agent-photo {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--line);
+      flex-shrink: 0;
+      background: var(--page);
+    }
+    .agent-photo-placeholder {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: var(--soft-green);
+      border: 2px solid var(--line);
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--green);
+    }
+    .agent-card-name { font-size: 1.15rem; font-weight: 800; }
+    .agent-card-brokerage { color: var(--muted); font-size: 0.88rem; margin-top: 3px; }
+    .agent-card-license { color: var(--muted); font-size: 0.82rem; margin-top: 2px; }
+    .agent-card-chips { display: flex; flex-direction: column; gap: 8px; }
+    .agent-chip {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--page);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 0.88rem;
+      text-decoration: none;
+      color: var(--ink);
+    }
+    .agent-chip:hover { border-color: #bdb5a8; }
+    .agent-chip.primary {
+      background: var(--soft-green);
+      border-color: var(--green);
+      color: var(--green);
+      font-weight: 700;
+    }
+    .agent-card-cta { margin-top: 4px; }
+
+    /* ── Value strip ── */
+    .value-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      padding: 0 0 36px;
+    }
+    .value-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 22px;
+    }
+    .value-icon { font-size: 1.6rem; margin-bottom: 10px; }
+    .value-title { font-size: 1rem; font-weight: 800; margin-bottom: 6px; }
+    .value-body { font-size: 0.9rem; color: var(--muted); line-height: 1.55; margin: 0; }
+
+    /* ── How it works ── */
+    .how-section { padding: 0 0 40px; }
+    .how-title { font-size: 1.3rem; font-weight: 800; margin-bottom: 16px; }
+    .how-steps {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .how-step {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 22px;
+    }
+    .how-num {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      background: var(--soft-green);
+      color: var(--green);
+      font-weight: 800;
+      display: grid;
+      place-items: center;
+      font-size: 0.95rem;
+      margin-bottom: 12px;
+    }
+    .how-step-title { font-weight: 800; margin-bottom: 6px; font-size: 0.95rem; }
+    .how-step-body { font-size: 0.88rem; color: var(--muted); line-height: 1.55; margin: 0; }
+
+    /* ── CTA band ── */
+    .cta-band {
+      background: var(--soft-green);
+      border: 1px solid #b8d9c8;
+      border-radius: 12px;
+      padding: 32px;
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .cta-band h2 { margin-bottom: 8px; font-size: 1.4rem; }
+    .cta-band p { color: var(--muted); margin-bottom: 20px; }
+    .cta-band-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+
+    /* ── Footer ── */
+    .site-footer {
+      border-top: 1px solid var(--line);
+      padding: 20px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .site-footer a { color: var(--muted); text-decoration: none; }
+    .site-footer a:hover { color: var(--ink); }
+    .footer-links { display: flex; gap: 16px; }
+
+    @media (max-width: 860px) {
+      .hero { grid-template-columns: 1fr; }
+      .value-strip, .how-steps { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 2rem; }
+    }
+    @media (max-width: 620px) {
+      .hero { padding-top: 28px; }
+      .hero-actions { display: grid; }
+      .hero-actions a { min-width: 0; width: 100%; }
+      .cta-band-actions { display: grid; }
+      .cta-band-actions a { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">DA</div>
+        <div>
+          <div class="brand-title">Deal Analyzer</div>
+          <div class="brand-subtitle">Rental underwriting without a spreadsheet</div>
+        </div>
+      </div>
+      <nav class="nav" aria-label="Main navigation">
+        <a href="/" aria-current="page">Home</a>
+        <a href="/deal-widget.html">Quick Check</a>
+        <a href="/add.html">Full Analysis</a>
+        <a href="/dashboard">Saved Deals</a>
+        <a href="/agent.html">Talk to Tonya</a>
+        <span id="user-label" style="opacity:0.6;font-size:0.85em;align-self:center"></span>
+        <a href="/auth/google" id="signin-link" style="display:none">Sign in</a>
+        <a href="/logout" id="logout-link" style="display:none">Log out</a>
+      </nav>
+    </header>
+
+    <main>
+      <div class="page">
+
+        <!-- Hero -->
+        <section class="hero">
+          <div class="hero-copy">
+            <h1>Analyze rental deals <em>in seconds.</em></h1>
+            <p class="hero-sub">Paste a Redfin or Zillow listing — or enter a few numbers — to get an instant investment read on any property. Save your best deals and get local guidance from Tonya.</p>
+            <div class="hero-actions">
+              <a href="/deal-widget.html" class="button primary">Start quick check</a>
+              <a href="/agent.html" class="button">Talk to Tonya</a>
+            </div>
+          </div>
+          <div id="agent-card-wrap">
+            <!-- populated by JS from /agent-config -->
+            <div class="agent-card" style="opacity:0.4;min-height:200px"></div>
+          </div>
+        </section>
+
+        <!-- Value strip -->
+        <section class="value-strip" aria-label="Key features">
+          <div class="value-card">
+            <div class="value-icon">⚡</div>
+            <div class="value-title">Fast rental underwriting</div>
+            <p class="value-body">Enter price, rent, taxes, HOA, and insurance. Get cash flow, cap rate, cash-on-cash, DSCR, and a deal score instantly.</p>
+          </div>
+          <div class="value-card">
+            <div class="value-icon">🔗</div>
+            <div class="value-title">Import from Redfin or Zillow</div>
+            <p class="value-body">Paste a listing URL and the analyzer auto-fills price, beds, baths, HOA, and taxes. No manual data entry.</p>
+          </div>
+          <div class="value-card">
+            <div class="value-icon">📁</div>
+            <div class="value-title">Save and compare deals</div>
+            <p class="value-body">Save any deal to your portfolio, sort by score or cash flow, and compare your best opportunities side by side.</p>
+          </div>
+        </section>
+
+        <!-- How it works -->
+        <section class="how-section">
+          <div class="how-title">How it works</div>
+          <div class="how-steps">
+            <div class="how-step">
+              <div class="how-num">1</div>
+              <div class="how-step-title">Paste a listing or enter numbers</div>
+              <p class="how-step-body">Import directly from Redfin or Zillow, or type in price and rent for a quick pass.</p>
+            </div>
+            <div class="how-step">
+              <div class="how-num">2</div>
+              <div class="how-step-title">Get an instant score</div>
+              <p class="how-step-body">See cash flow, cap rate, cash-on-cash return, and a BUY / HOLD / PASS recommendation in seconds.</p>
+            </div>
+            <div class="how-step">
+              <div class="how-num">3</div>
+              <div class="how-step-title">Save it or send it to Tonya</div>
+              <p class="how-step-body">Keep your best deals ranked in your portfolio, or reach out to Tonya for local market context and next steps.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- CTA band -->
+        <section class="cta-band">
+          <h2>Ready to check a property?</h2>
+          <p>Quick Check is free, takes 30 seconds, and needs no account.</p>
+          <div class="cta-band-actions">
+            <a href="/deal-widget.html" class="button primary">Quick Check</a>
+            <a href="/add.html" class="button">Full Analysis</a>
+          </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="site-footer">
+          <span id="footer-agent-contact"></span>
+          <div class="footer-links">
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+          </div>
+        </footer>
+
+      </div>
+    </main>
+  </div>
+
+  <script>
+    fetch('/whoami').then(r => r.json()).then(user => {
+      if (user) {
+        document.getElementById('user-label').textContent = user.displayName || user.email || '';
+        document.getElementById('logout-link').style.display = '';
+      } else {
+        document.getElementById('signin-link').style.display = '';
+      }
+    });
+
+    fetch('/agent-config').then(r => r.json()).then(cfg => {
+      if (!cfg.name && !cfg.photo && !cfg.email && !cfg.phone) return;
+
+      // Agent card in hero
+      const photoHtml = cfg.photo
+        ? `<img class="agent-photo" src="${esc(cfg.photo)}" alt="Profile photo" />`
+        : cfg.name
+          ? `<div class="agent-photo-placeholder">${esc(cfg.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase())}</div>`
+          : '';
+
+      const chips = [];
+      if (cfg.zillowUrl) chips.push(`<a class="agent-chip primary" href="${esc(cfg.zillowUrl)}" target="_blank" rel="noopener">★ View on Zillow</a>`);
+      if (cfg.phone) chips.push(`<a class="agent-chip" href="tel:${esc(cfg.phone)}">✆ ${esc(cfg.phone)}</a>`);
+      if (cfg.email) chips.push(`<a class="agent-chip" href="mailto:${esc(cfg.email)}">✉ ${esc(cfg.email)}</a>`);
+
+      document.getElementById('agent-card-wrap').innerHTML = `
+        <div class="agent-card">
+          <div class="agent-card-header">
+            ${photoHtml}
+            <div>
+              <div class="agent-card-name">${esc(cfg.name || '')}</div>
+              ${cfg.brokerage ? `<div class="agent-card-brokerage">${esc(cfg.brokerage)}</div>` : ''}
+              ${cfg.licenseNumber ? `<div class="agent-card-license">License #${esc(cfg.licenseNumber)}</div>` : ''}
+            </div>
+          </div>
+          ${chips.length ? `<div class="agent-card-chips">${chips.join('')}</div>` : ''}
+          <div class="agent-card-cta">
+            <a href="/agent.html" class="button" style="width:100%;text-align:center;display:block">Talk to Tonya →</a>
+          </div>
+        </div>
+      `;
+
+      // Footer contact
+      const footerParts = [];
+      if (cfg.name) footerParts.push(esc(cfg.name));
+      if (cfg.email) footerParts.push(`<a href="mailto:${esc(cfg.email)}">${esc(cfg.email)}</a>`);
+      if (footerParts.length) document.getElementById('footer-agent-contact').innerHTML = footerParts.join(' · ');
+    });
+
+    function esc(v) {
+      return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+  </script>
+</body>
+</html>
