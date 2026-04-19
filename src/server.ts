@@ -514,7 +514,7 @@ function walkForNumbers(node: unknown, out: JsonRecord, depth = 0) {
       if (out.price == null && /listprice|listingprice|askingprice|saleprice|sellingprice|^price$|unformattedprice/.test(k)) out.price = value;
       if (out.rent == null && /rent|rentalestimate|zestimate.*rent/.test(k)) out.rent = value;
       if (out.taxes == null && /taxannual|annualtax|propertytax|taxamount|taxesamount|realestatetax/.test(k)) out.taxes = value;
-      if (out.hoa == null && /hoafee|hoamonthly|hoamonth|hoaamt|^hoa$/.test(k)) out.hoa = value;
+      if (out.hoa == null && /hoafee|hoamonthly|hoamonth|hoaamt|hoadues|hoadue|^hoa$/.test(k)) out.hoa = value;
       if (out.beds == null && /^bed|bedroom/.test(k)) out.beds = value;
       if (out.baths == null && /^bath|bathroom/.test(k)) out.baths = value;
       if (out.sqft == null && /sqft|squarefeet|floorarea|livingarea|finishedsqft/.test(k)) out.sqft = value;
@@ -550,13 +550,23 @@ function parseListingText(text: unknown, sourceUrl = ''): JsonRecord {
     const match = bodyText.match(pattern);
     if (match) { result.price = extractMoney(match[1]); break; }
   }
-  // Rent
+  // HOA — parse before rent so the greedy $X/mo rent fallback doesn't steal HOA amounts
+  const hoaMatch = bodyText.match(/hoa(?:\s+(?:fee|dues|due))?\s*:?\s*(\$[\d,]+)\s*(?:\/\s*mo(?:nth)?)?/i)
+    || bodyText.match(/(\$[\d,]+)\s*(?:\/\s*mo[a-z]*)?\s+hoa\s*(?:dues?|fee)?/i)
+    || bodyText.match(/(?:homeowner[s']?\s+assoc[^$]{0,30})\s*(\$[\d,]+)/i);
+  if (hoaMatch) result.hoa = extractMoney(hoaMatch[1]);
+  // Rent — exclude the HOA amount from the greedy $X/mo fallback
+  const hoaAmountStr = result.hoa != null ? String(result.hoa) : null;
   for (const pattern of [
     /(?:monthly\s+rent|estimated\s+rent|rent(?:\s+estimate)?)\s*:?\s*(\$[\d,]+)/i,
     /(\$[\d,]+)\s*\/\s*mo(?:nth)?/i
   ]) {
     const match = bodyText.match(pattern);
-    if (match) { result.rent = extractMoney(match[1] || match[0]); break; }
+    if (match) {
+      const val = extractMoney(match[1] || match[0]);
+      if (hoaAmountStr && String(val) === hoaAmountStr) continue;
+      result.rent = val; break;
+    }
   }
   // Taxes — prefer annual; if monthly found, multiply by 12
   const annualTaxMatch = bodyText.match(/(?:property\s+)?tax(?:es)?\s*:?\s*(\$[\d,]+)\s*(?:\/\s*(?:yr|year)|per\s+year|annually)/i)
@@ -566,10 +576,6 @@ function parseListingText(text: unknown, sourceUrl = ''): JsonRecord {
     const monthly = /\/\s*mo/.test(annualTaxMatch[0]);
     result.taxes = val != null ? (monthly ? val * 12 : val) : null;
   }
-  // HOA
-  const hoaMatch = bodyText.match(/hoa(?:\s+fee)?\s*:?\s*(\$[\d,]+)\s*(?:\/\s*mo(?:nth)?)?/i)
-    || bodyText.match(/(?:homeowner[s']?\s+assoc[^$]{0,30})\s*(\$[\d,]+)/i);
-  if (hoaMatch) result.hoa = extractMoney(hoaMatch[1]);
   // Beds / baths / sqft
   const bedsMatch = bodyText.match(/(\d+(?:\.\d+)?)\s*(?:bed(?:room)?s?)\b/i);
   if (bedsMatch) result.beds = Number(bedsMatch[1]);
