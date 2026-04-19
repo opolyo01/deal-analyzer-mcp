@@ -882,7 +882,7 @@ app.get('/dashboard', (_req, res) => {
 app.post('/mcp', async (req, res) => {
   const { id, method, params } = req.body || {};
   try {
-    if (method === 'initialize') return res.json(jsonRpc(id, { serverInfo: { name: APP_NAME, version: APP_VERSION }, capabilities: { tools: {} } }));
+    if (method === 'initialize') return res.json(jsonRpc(id, { protocolVersion: '2024-11-05', serverInfo: { name: APP_NAME, version: APP_VERSION }, capabilities: { tools: {} } }));
     if (method === 'tools/list') return res.json(jsonRpc(id, { tools }));
     if (method === 'tools/call') {
       const name = params?.name;
