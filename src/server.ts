@@ -844,6 +844,7 @@ app.get('/debug/auth', (req, res) => {
     tokenExpired: tokenRow && typeof tokenRow === 'object' ? (tokenRow.expires_at && tokenRow.expires_at < Date.now() ? true : false) : null,
   });
 });
+app.get('/.well-known/openai-apps-challenge', (_req, res) => res.type('text').send('NkH-RDeGXlSJZRHoMRFoAhZfhb6JM7sABBUB4k9Y_zw'));
 app.get('/.well-known/app.json', (req, res) => {
   res.json({ name: 'Deal Analyzer MCP', description: 'ChatGPT app for underwriting, saving, and comparing real estate deals.', mcp_url: `${baseUrl(req)}/mcp`, developer: { name: 'opolyo01' } });
 });
