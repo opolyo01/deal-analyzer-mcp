@@ -155,6 +155,8 @@
       .hero { grid-template-columns: 1fr; }
       .value-strip, .how-steps { grid-template-columns: 1fr; }
       .hero h1 { font-size: 2rem; }
+      .referral-grid { grid-template-columns: 1fr !important; }
+      .referral-grid > div:first-child { border-right: none !important; border-bottom: 1px solid var(--line); }
     }
     @media (max-width: 620px) {
       .hero { padding-top: 28px; }
@@ -243,6 +245,39 @@
               <div class="how-num">3</div>
               <div class="how-step-title">Save it or send it to Tonya</div>
               <p class="how-step-body">Keep your best deals ranked in your portfolio, or reach out to Tonya for local market context and next steps.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Nationwide referral network -->
+        <section style="margin-bottom:36px">
+          <div style="background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden">
+            <div class="referral-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+              <div style="padding:32px 36px;border-right:1px solid var(--line)">
+                <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:12px">Not investing in Chicagoland?</div>
+                <h2 style="font-size:1.3rem;margin-bottom:10px">Tonya knows agents everywhere.</h2>
+                <p style="color:var(--muted);font-size:0.92rem;line-height:1.65;margin:0">
+                  Through her national network, Tonya can connect you with vetted, investor-friendly agents in any market across the US — people who understand cash flow, not just list price. Run the numbers here, then let Tonya make the introduction.
+                </p>
+              </div>
+              <div style="padding:32px 36px;background:var(--page)">
+                <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:16px">How it works</div>
+                <div style="display:flex;flex-direction:column;gap:14px">
+                  <div style="display:flex;gap:12px;align-items:flex-start">
+                    <div style="width:24px;height:24px;border-radius:50%;background:var(--soft-green);color:var(--green);font-weight:800;font-size:0.8rem;display:grid;place-items:center;flex-shrink:0">1</div>
+                    <div style="font-size:0.9rem;line-height:1.5">Analyze a deal anywhere in the US with Quick Check or Full Analysis</div>
+                  </div>
+                  <div style="display:flex;gap:12px;align-items:flex-start">
+                    <div style="width:24px;height:24px;border-radius:50%;background:var(--soft-green);color:var(--green);font-weight:800;font-size:0.8rem;display:grid;place-items:center;flex-shrink:0">2</div>
+                    <div style="font-size:0.9rem;line-height:1.5">Send the deal to Tonya — she reviews the market and your numbers</div>
+                  </div>
+                  <div style="display:flex;gap:12px;align-items:flex-start">
+                    <div style="width:24px;height:24px;border-radius:50%;background:var(--soft-green);color:var(--green);font-weight:800;font-size:0.8rem;display:grid;place-items:center;flex-shrink:0">3</div>
+                    <div style="font-size:0.9rem;line-height:1.5">Get connected with a top local agent who knows investor deals in that market</div>
+                  </div>
+                </div>
+                <a href="/agent.html" class="button primary" style="margin-top:20px;display:block;text-align:center">Talk to Tonya</a>
+              </div>
             </div>
           </div>
         </section>
