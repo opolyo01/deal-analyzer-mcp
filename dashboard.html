@@ -29,246 +29,36 @@
     </header>
 
     <main class="page">
-      <h1 style="margin-bottom:4px">Saved Deals</h1>
-      <p class="lead" style="margin-bottom:24px">Your ranked pipeline. <a href="/add.html">Add a new deal →</a></p>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+        <div>
+          <h1 style="margin-bottom:4px">Saved Deals</h1>
+          <p class="lead" style="margin:0">Your ranked pipeline.</p>
+        </div>
+        <a href="/add.html" class="button primary">+ New analysis</a>
+      </div>
 
       <section class="stats" id="stats" aria-label="Saved deal summary"></section>
 
-      <section class="workspace">
-        <form class="panel" id="deal-form">
-          <h2>Quick entry</h2>
-          <div class="form-grid">
-            <div class="field full">
-              <label for="label">Deal label</label>
-              <input id="label" name="label" placeholder="Maple Street duplex" autocomplete="off" />
-            </div>
-            <div class="field full">
-              <label for="address">Address</label>
-              <input id="address" name="address" placeholder="123 Maple St, Austin, TX" autocomplete="street-address" />
-            </div>
-            <div class="field">
-              <label for="price">Purchase price</label>
-              <input id="price" name="price" inputmode="decimal" placeholder="350000" required />
-            </div>
-            <div class="field">
-              <label for="rent">Monthly rent</label>
-              <input id="rent" name="rent" inputmode="decimal" placeholder="2850" />
-            </div>
-            <div class="field">
-              <label for="taxes">Annual property taxes</label>
-              <input id="taxes" name="taxes" inputmode="decimal" placeholder="5200" />
-            </div>
-            <div class="field">
-              <label for="insurance">Annual insurance</label>
-              <input id="insurance" name="insurance" inputmode="decimal" placeholder="1800" />
-            </div>
-            <div class="field">
-              <label for="hoa">Monthly HOA</label>
-              <input id="hoa" name="hoa" inputmode="decimal" placeholder="0" />
-            </div>
-            <div class="field">
-              <label for="otherMonthlyCosts">Other monthly costs</label>
-              <input id="otherMonthlyCosts" name="otherMonthlyCosts" inputmode="decimal" placeholder="0" />
-            </div>
-            <div class="field">
-              <label for="vacancyRate">Vacancy reserve %</label>
-              <input id="vacancyRate" name="vacancyRate" inputmode="decimal" placeholder="5" />
-            </div>
-            <div class="field">
-              <label for="repairsRate">Repairs reserve %</label>
-              <input id="repairsRate" name="repairsRate" inputmode="decimal" placeholder="5" />
-            </div>
-            <div class="field">
-              <label for="capexRate">Capex reserve %</label>
-              <input id="capexRate" name="capexRate" inputmode="decimal" placeholder="5" />
-            </div>
-            <div class="field">
-              <label for="managementRate">Management %</label>
-              <input id="managementRate" name="managementRate" inputmode="decimal" placeholder="8" />
-            </div>
-            <div class="field">
-              <label for="downPaymentPercent">Down payment %</label>
-              <input id="downPaymentPercent" name="downPaymentPercent" inputmode="decimal" placeholder="20" />
-            </div>
-            <div class="field">
-              <label for="rate">Interest rate %</label>
-              <input id="rate" name="rate" inputmode="decimal" placeholder="6.5" />
-            </div>
-            <div class="field">
-              <label for="termYears">Loan term</label>
-              <input id="termYears" name="termYears" inputmode="numeric" placeholder="30" />
-            </div>
-            <div class="field full">
-              <label for="propertyType">Property type</label>
-              <select id="propertyType" name="propertyType">
-                <option value="">Select type</option>
-                <option>Single family</option>
-                <option>Duplex</option>
-                <option>Triplex</option>
-                <option>Multifamily</option>
-                <option>Condo</option>
-                <option>Townhouse</option>
-              </select>
-            </div>
-          </div>
-          <div class="actions">
-            <button class="primary" type="submit" data-action="analyze">Analyze</button>
-            <button type="submit" data-action="save">Analyze and save</button>
-            <button type="button" class="secondary" id="sample">Fill sample</button>
-          </div>
-          <div class="status" id="form-status" aria-live="polite"></div>
-        </form>
-
-        <section class="panel" aria-live="polite">
-          <h2>Analysis</h2>
-          <div id="analysis">
-            <div class="empty-state">Add a price and rent to see cash flow, return metrics, and the deal score.</div>
-          </div>
-        </section>
-      </section>
-
-      <section style="margin-top: 24px;">
-        <h2>Saved deals</h2>
-        <div class="deal-list" id="deal-list"></div>
-      </section>
+      <div class="deal-list" id="deal-list"></div>
     </main>
   </div>
 
   <script>
-    let signedIn = false;
     fetch('/whoami').then(r => r.json()).then(user => {
       if (user) {
-        signedIn = true;
         document.getElementById('user-label').textContent = user.displayName || user.email || '';
         document.getElementById('logout-link').style.display = '';
         loadDeals().catch(() => { renderStats([]); renderDeals([]); });
       } else {
         document.getElementById('signin-link').style.display = '';
         renderStats([]);
-        document.getElementById('deal-list').innerHTML = '<div class="empty-state"><a href="/auth/google">Sign in</a> to save and view your deals.</div>';
+        document.getElementById('deal-list').innerHTML = `
+          <div class="empty-state" style="padding:32px;text-align:center">
+            <p style="margin-bottom:16px"><a href="/auth/google">Sign in</a> to save and view your deals.</p>
+            <a href="/deal-widget.html" class="button primary">Try Quick Check free</a>
+          </div>`;
       }
     });
-
-    const form = document.getElementById('deal-form');
-    const statusEl = document.getElementById('form-status');
-    let lastAction = 'analyze';
-
-    form.querySelectorAll('button[type="submit"]').forEach((button) => {
-      button.addEventListener('click', () => {
-        lastAction = button.dataset.action || 'analyze';
-      });
-    });
-
-    document.getElementById('sample').addEventListener('click', () => {
-      setValue('label', 'Maple Street duplex');
-      setValue('address', '123 Maple St, Austin, TX');
-      setValue('price', '350000');
-      setValue('rent', '2850');
-      setValue('taxes', '5200');
-      setValue('insurance', '1800');
-      setValue('hoa', '0');
-      setValue('otherMonthlyCosts', '0');
-      setValue('vacancyRate', '5');
-      setValue('repairsRate', '5');
-      setValue('capexRate', '5');
-      setValue('managementRate', '8');
-      setValue('downPaymentPercent', '20');
-      setValue('rate', '6.5');
-      setValue('termYears', '30');
-      setValue('propertyType', 'Duplex');
-      statusEl.textContent = 'Sample deal filled.';
-    });
-
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const payload = readPayload();
-      if (!payload.price) {
-        statusEl.textContent = 'Purchase price is required.';
-        return;
-      }
-      if (lastAction === 'save' && !signedIn) {
-        window.location.href = '/auth/google';
-        return;
-      }
-
-      try {
-        statusEl.textContent = lastAction === 'save' ? 'Analyzing and saving...' : 'Analyzing...';
-        const data = lastAction === 'save' ? await saveDeal(payload) : await analyzeDeal(payload);
-        renderAnalysis(lastAction === 'save' ? data.analysis : data, data.id);
-        if (lastAction === 'save') await loadDeals();
-        statusEl.textContent = lastAction === 'save' ? 'Deal saved.' : 'Analysis ready.';
-      } catch (error) {
-        statusEl.textContent = error.message || 'Something went wrong.';
-      }
-    });
-
-    function setValue(id, value) {
-      document.getElementById(id).value = value;
-    }
-
-    function numberValue(id) {
-      const raw = document.getElementById(id).value.trim().replace(/[$,%\s,]/g, '');
-      if (!raw) return null;
-      const value = Number(raw);
-      return Number.isFinite(value) ? value : null;
-    }
-
-    function textValue(id) {
-      return document.getElementById(id).value.trim();
-    }
-
-    function readPayload() {
-      const downPaymentPercent = numberValue('downPaymentPercent');
-      const rate = numberValue('rate');
-      const vacancyRate = numberValue('vacancyRate');
-      const repairsRate = numberValue('repairsRate');
-      const capexRate = numberValue('capexRate');
-      const managementRate = numberValue('managementRate');
-      return stripEmpty({
-        label: textValue('label'),
-        address: textValue('address'),
-        price: numberValue('price'),
-        rent: numberValue('rent'),
-        taxes: numberValue('taxes'),
-        insurance: numberValue('insurance'),
-        hoa: numberValue('hoa'),
-        otherMonthlyCosts: numberValue('otherMonthlyCosts'),
-        vacancyRate: vacancyRate == null ? null : vacancyRate / 100,
-        repairsRate: repairsRate == null ? null : repairsRate / 100,
-        capexRate: capexRate == null ? null : capexRate / 100,
-        managementRate: managementRate == null ? null : managementRate / 100,
-        downPaymentPercent: downPaymentPercent == null ? null : downPaymentPercent / 100,
-        rate: rate == null ? null : rate / 100,
-        termYears: numberValue('termYears'),
-        propertyType: textValue('propertyType')
-      });
-    }
-
-    function stripEmpty(input) {
-      return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== '' && value != null));
-    }
-
-    async function analyzeDeal(payload) {
-      const res = await fetch('/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to analyze deal.');
-      return data;
-    }
-
-    async function saveDeal(payload) {
-      const res = await fetch('/saveDeal', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to save deal.');
-      return data;
-    }
 
     async function loadDeals() {
       const res = await fetch('/deals');
@@ -280,43 +70,50 @@
 
     function renderStats(deals) {
       const count = deals.length;
-      const buys = deals.filter((deal) => deal.analysis?.summary?.recommendation === 'BUY').length;
-      const avgScore = count ? (deals.reduce((sum, deal) => sum + Number(deal.analysis?.summary?.score || 0), 0) / count).toFixed(1) : '0.0';
+      const buys = deals.filter(d => d.analysis?.summary?.recommendation === 'BUY').length;
+      const avgScore = count ? (deals.reduce((s, d) => s + Number(d.analysis?.summary?.score || 0), 0) / count).toFixed(1) : '0.0';
       const best = [...deals].sort((a, b) => Number(b.analysis?.summary?.score || 0) - Number(a.analysis?.summary?.score || 0))[0];
       document.getElementById('stats').innerHTML = `
         <div class="stat"><div class="stat-label">Saved</div><div class="stat-value">${count}</div></div>
         <div class="stat"><div class="stat-label">Buy rated</div><div class="stat-value">${buys}</div></div>
-        <div class="stat"><div class="stat-label">Average score</div><div class="stat-value">${avgScore}</div></div>
-        <div class="stat"><div class="stat-label">Top deal</div><div class="stat-value">${best ? escapeHtml(best.label || best.input?.label || 'Deal') : '-'}</div></div>
+        <div class="stat"><div class="stat-label">Avg score</div><div class="stat-value">${avgScore}</div></div>
+        <div class="stat"><div class="stat-label">Top deal</div><div class="stat-value" style="font-size:16px">${best ? escHtml(best.label || best.input?.label || 'Deal') : '—'}</div></div>
       `;
     }
 
     function renderDeals(deals) {
       const list = document.getElementById('deal-list');
       if (!deals.length) {
-        list.innerHTML = '<div class="empty-state">No saved deals yet. Use "Analyze and save" to keep one here.</div>';
+        list.innerHTML = `
+          <div class="empty-state" style="padding:32px;text-align:center">
+            <p style="margin-bottom:16px">No saved deals yet.</p>
+            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+              <a href="/deal-widget.html" class="button primary">Quick Check</a>
+              <a href="/add.html" class="button">Full Analysis</a>
+            </div>
+          </div>`;
         return;
       }
 
       deals.sort((a, b) => {
-        const scoreDiff = Number(b.analysis?.summary?.score || 0) - Number(a.analysis?.summary?.score || 0);
-        return scoreDiff || Number(b.analysis?.summary?.monthlyCashFlow || 0) - Number(a.analysis?.summary?.monthlyCashFlow || 0);
+        const s = Number(b.analysis?.summary?.score || 0) - Number(a.analysis?.summary?.score || 0);
+        return s || Number(b.analysis?.summary?.monthlyCashFlow || 0) - Number(a.analysis?.summary?.monthlyCashFlow || 0);
       });
 
-      list.innerHTML = deals.map((deal, index) => {
+      list.innerHTML = deals.map((deal, i) => {
         const summary = deal.analysis?.summary || {};
         const input = deal.analysis?.input || deal.input || {};
         const cls = recClass(summary.recommendation);
         return `
-          <article class="deal-item ${cls}" data-id="${escapeHtml(deal.id)}">
+          <article class="deal-item ${cls}" data-id="${escHtml(deal.id)}">
             <div class="deal-head">
               <div>
-                <div class="deal-name">${index + 1}. ${escapeHtml(deal.label || input.label || input.address || 'Deal')}</div>
-                <div class="deal-meta">${escapeHtml(input.address || input.propertyType || 'Saved deal')}</div>
+                <div class="deal-name">${i + 1}. ${escHtml(deal.label || input.label || input.address || 'Deal')}</div>
+                <div class="deal-meta">${escHtml(input.address || input.propertyType || 'Saved deal')}</div>
               </div>
               <div style="display:flex;align-items:center;gap:8px">
-                <div class="pill ${cls}">${Number(summary.score || 0)}/10 ${escapeHtml(summary.recommendation || 'HOLD')}</div>
-                <button class="delete-btn" data-id="${escapeHtml(deal.id)}" title="Delete deal" style="min-height:32px;padding:4px 10px;font-size:0.8em;border-color:#e0a0a0;color:#c44">&#x2715;</button>
+                <div class="pill ${cls}">${Number(summary.score || 0)}/10 ${escHtml(summary.recommendation || 'HOLD')}</div>
+                <button class="delete-btn" data-id="${escHtml(deal.id)}" title="Delete" style="min-height:32px;padding:4px 10px;font-size:0.8em;border-color:#e0a0a0;color:#c44">&#x2715;</button>
               </div>
             </div>
             <div class="deal-metrics">
@@ -325,96 +122,26 @@
               <div><div class="metric-label">Rent</div><strong>${currency(input.rent)}</strong></div>
               <div><div class="metric-label">Cap rate</div><strong>${percent(summary.capRate)}</strong></div>
             </div>
-          </article>
-        `;
+          </article>`;
       }).join('');
 
       list.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
+        btn.addEventListener('click', async e => {
           e.stopPropagation();
-          const id = btn.dataset.id;
           if (!confirm('Delete this deal?')) return;
-          const res = await fetch(`/deals/${id}`, { method: 'DELETE' });
+          const res = await fetch(`/deals/${btn.dataset.id}`, { method: 'DELETE' });
           if (res.ok) {
             btn.closest('article').remove();
-            const remaining = Array.from(list.querySelectorAll('.deal-item')).map(el => ({ analysis: { summary: {}, input: {} } }));
-            if (!list.querySelector('.deal-item')) list.innerHTML = '<div class="empty-state">No saved deals yet. Use "Analyze and save" to keep one here.</div>';
+            if (!list.querySelector('.deal-item')) renderDeals([]);
           }
         });
       });
     }
 
-    function renderAnalysis(analysis, savedId) {
-      const summary = analysis.summary || {};
-      const input = analysis.input || {};
-      const cls = recClass(summary.recommendation);
-      document.getElementById('analysis').innerHTML = `
-        <div class="recommendation ${cls}">${escapeHtml(summary.recommendation || 'HOLD')} - ${Number(summary.score || 0)}/10</div>
-        <div class="result-grid">
-          <div class="metric"><div class="metric-label">Cash flow after debt</div><div class="metric-value">${currency(summary.monthlyCashFlow)}</div></div>
-          <div class="metric"><div class="metric-label">Cash flow before principal</div><div class="metric-value">${currency(summary.monthlyCashFlowBeforePrincipal)}</div></div>
-          <div class="metric"><div class="metric-label">Principal paydown</div><div class="metric-value">${currency(summary.monthlyPrincipalPaydown)}</div></div>
-          <div class="metric"><div class="metric-label">Interest portion</div><div class="metric-value">${currency(summary.monthlyInterest)}</div></div>
-          <div class="metric"><div class="metric-label">Break-even rent</div><div class="metric-value">${currency(summary.breakEvenRent)}</div></div>
-          <div class="metric"><div class="metric-label">Cap rate</div><div class="metric-value">${percent(summary.capRate)}</div></div>
-          <div class="metric"><div class="metric-label">Cash-on-cash</div><div class="metric-value">${percent(summary.cashOnCashReturn)}</div></div>
-          <div class="metric"><div class="metric-label">Rent used</div><div class="metric-value">${currency(input.rent)}</div></div>
-        </div>
-        ${expenseBreakdownHtml(summary)}
-        ${savedId ? `<p class="status">Saved as ${escapeHtml(savedId)}</p>` : ''}
-      `;
-    }
-
-    function expenseBreakdownHtml(summary) {
-      const items = summary.monthlyExpenseBreakdown || {};
-      const debtPayment = items.debtPayment ?? items.mortgage ?? summary.monthlyMortgage;
-      return `
-        <div class="breakdown">
-          <div class="breakdown-row"><span>Debt payment (P&I)</span><strong>${currency(debtPayment)}</strong></div>
-          <div class="breakdown-row sub"><span>Interest portion</span><strong>${currency(items.interest ?? summary.monthlyInterest)}</strong></div>
-          <div class="breakdown-row sub"><span>Principal paydown</span><strong>${currency(items.principalPaydown ?? summary.monthlyPrincipalPaydown)}</strong></div>
-          <div class="breakdown-row"><span>Taxes</span><strong>${currency(items.taxes)}</strong></div>
-          <div class="breakdown-row"><span>Insurance</span><strong>${currency(items.insurance)}</strong></div>
-          <div class="breakdown-row"><span>HOA</span><strong>${currency(items.hoa)}</strong></div>
-          <div class="breakdown-row"><span>Other monthly costs</span><strong>${currency(items.otherMonthlyCosts)}</strong></div>
-          <div class="breakdown-row"><span>Vacancy reserve</span><strong>${currency(items.vacancy)}</strong></div>
-          <div class="breakdown-row"><span>Repairs reserve</span><strong>${currency(items.repairs)}</strong></div>
-          <div class="breakdown-row"><span>Capex reserve</span><strong>${currency(items.capex)}</strong></div>
-          <div class="breakdown-row"><span>Management</span><strong>${currency(items.management)}</strong></div>
-          <div class="breakdown-row total"><span>Total monthly cash outflow</span><strong>${currency(summary.monthlyAllInCost)}</strong></div>
-          <div class="breakdown-row total equity"><span>Cost before principal</span><strong>${currency(summary.monthlyCostBeforePrincipal)}</strong></div>
-        </div>
-        <p class="breakdown-note">Cash flow before principal treats principal paydown as equity, while cash flow after debt counts the full P&I payment.</p>
-      `;
-    }
-
-    function recClass(value) {
-      const rec = String(value || '').toLowerCase();
-      if (rec === 'buy') return 'buy';
-      if (rec === 'pass') return 'pass';
-      return 'hold';
-    }
-
-    function currency(value) {
-      const number = Number(value || 0);
-      const sign = number < 0 ? '-' : '';
-      return sign + '$' + Math.abs(Math.round(number)).toLocaleString('en-US');
-    }
-
-    function percent(value) {
-      return value == null ? '-' : (Number(value) * 100).toFixed(1) + '%';
-    }
-
-    function escapeHtml(value) {
-      return String(value ?? '').replace(/[&<>"']/g, (char) => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
-      }[char]));
-    }
-
+    function recClass(v) { const r = String(v || '').toLowerCase(); return r === 'buy' ? 'buy' : r === 'pass' ? 'pass' : 'hold'; }
+    function currency(v) { const n = Number(v || 0); return (n < 0 ? '-' : '') + '$' + Math.abs(Math.round(n)).toLocaleString('en-US'); }
+    function percent(v) { return v == null ? '-' : (Number(v) * 100).toFixed(1) + '%'; }
+    function escHtml(v) { return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   </script>
 </body>
 </html>
