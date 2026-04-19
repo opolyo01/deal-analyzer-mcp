@@ -141,8 +141,10 @@
   </main>
 
   <script>
+    let signedIn = false;
     fetch('/whoami').then(r => r.json()).then(user => {
       if (user) {
+        signedIn = true;
         document.getElementById('user-label').textContent = user.displayName || user.email || '';
         document.getElementById('logout-link').style.display = '';
       } else {
@@ -216,6 +218,10 @@
       const payload = readPayload();
       if (!payload.price) {
         statusEl.textContent = 'Purchase price is required.';
+        return;
+      }
+      if (action === 'save' && !signedIn) {
+        window.location.href = '/auth/google';
         return;
       }
 

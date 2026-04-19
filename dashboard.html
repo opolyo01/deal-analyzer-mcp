@@ -186,6 +186,10 @@
         statusEl.textContent = 'Purchase price is required.';
         return;
       }
+      if (lastAction === 'save' && !signedIn) {
+        window.location.href = '/auth/google';
+        return;
+      }
 
       try {
         statusEl.textContent = lastAction === 'save' ? 'Analyzing and saving...' : 'Analyzing...';
