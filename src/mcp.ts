@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { calculateDeal, parseListing, compareDeals, mergeListingWithOverrides, asCurrency } from './deal';
 import { getSavedDeals, saveDealRecord, dbPath } from './db';
 import { sessionOrBearerUser } from './oauth';
-import { errorMessage, APP_NAME, APP_VERSION, ALLOW_ANONYMOUS_MODE } from './utils';
+import { errorMessage, APP_NAME, APP_VERSION, ALLOW_ANONYMOUS_MODE, baseUrl } from './utils';
 import type { JsonRecord } from './types';
 
 // ── MCP tool definitions ──────────────────────────────────────────────────────
@@ -78,6 +78,13 @@ function buildCompareToolResult(comparison: ReturnType<typeof compareDeals>) {
 // ── Request handler ───────────────────────────────────────────────────────────
 
 async function handleMcpRequest(req: Request, res: express.Response) {
+  const user = sessionOrBearerUser(req);
+  if (!user && !ALLOW_ANONYMOUS_MODE) {
+    const origin = baseUrl(req);
+    res.setHeader('WWW-Authenticate', `Bearer realm="${origin}", resource_metadata="${origin}/mcp/.well-known/oauth-protected-resource"`);
+    return res.status(401).json({ error: 'unauthorized', error_description: 'Bearer token required' });
+  }
+
   const body = Array.isArray(req.body) ? req.body : [req.body || {}];
   const authHeader = req.headers.authorization || '(none)';
   const tokenPreview = authHeader.startsWith('Bearer ') ? authHeader.slice(7, 16) + '…' : authHeader;
