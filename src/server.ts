@@ -900,14 +900,15 @@ app.post('/mcp', async (req, res) => {
       if (name === 'compareDeals') return res.json(jsonRpc(id, buildCompareToolResult(compareDeals(args.deals || []))));
       if (name === 'saveDeal' || name === 'getDeals') {
         const user = sessionOrBearerUser(req);
-        if (!user && !ALLOW_ANONYMOUS_MODE) return res.status(401).json(jsonRpcError(id, 401, 'Authentication required'));
-        if (name === 'saveDeal') {
-          const analysis = calculateDeal(args);
-          const savedId = saveDealRecord(args, analysis, user ? user.id : null);
-          return res.json(jsonRpc(id, { content: [{ type: 'text', text: 'Deal saved successfully' }], structuredContent: { id: savedId, ...analysis } }));
+        if (name === 'getDeals') {
+          if (!user) return res.json(jsonRpc(id, { content: [{ type: 'text', text: 'Not authenticated — reconnect Deal Analyzer in ChatGPT settings to load saved deals.' }], structuredContent: [] }));
+          const deals = getSavedDeals(user.id);
+          return res.json(jsonRpc(id, { content: [{ type: 'text', text: `Found ${deals.length} deals` }], structuredContent: deals }));
         }
-        const deals = getSavedDeals(user ? user.id : null);
-        return res.json(jsonRpc(id, { content: [{ type: 'text', text: `Found ${deals.length} deals` }], structuredContent: deals }));
+        if (!user && !ALLOW_ANONYMOUS_MODE) return res.json(jsonRpc(id, { content: [{ type: 'text', text: 'Authentication required to save deals. Please reconnect Deal Analyzer in ChatGPT settings.' }], structuredContent: { error: 'unauthenticated' } }));
+        const analysis = calculateDeal(args);
+        const savedId = saveDealRecord(args, analysis, user ? user.id : null);
+        return res.json(jsonRpc(id, { content: [{ type: 'text', text: 'Deal saved successfully' }], structuredContent: { id: savedId, ...analysis } }));
       }
       return res.json(jsonRpcError(id, -32601, 'Unknown tool'));
     }
