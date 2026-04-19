@@ -74,6 +74,7 @@ declare module 'express-session' {
 const app = express();
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: false }));
 const projectRoot = path.resolve(__dirname, '..');
 app.use(express.static(path.join(projectRoot, 'public')));
 app.use(session({
