@@ -276,14 +276,13 @@ function getSavedDeals(userId: string | null = null) {
     ? db.prepare('SELECT * FROM deals WHERE userId = ? ORDER BY createdAt DESC').all(userId)
     : db.prepare('SELECT * FROM deals WHERE userId IS NULL ORDER BY createdAt DESC').all()) as DealRow[];
 
-  return rows.map(row => ({
-    id: row.id,
-    userId: row.userId,
-    label: row.label,
-    createdAt: row.createdAt,
-    input: JSON.parse(row.input),
-    analysis: JSON.parse(row.analysis)
-  }));
+  return rows.flatMap(row => {
+    try {
+      return [{ id: row.id, userId: row.userId, label: row.label, createdAt: row.createdAt, input: JSON.parse(row.input), analysis: JSON.parse(row.analysis) }];
+    } catch {
+      return [{ id: row.id, userId: row.userId, label: row.label, createdAt: row.createdAt, input: {}, analysis: { _parseError: true } }];
+    }
+  });
 }
 function currentUser(req: Request): AppUser | null {
   return req.user || null;
