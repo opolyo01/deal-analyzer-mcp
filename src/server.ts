@@ -35,7 +35,7 @@ interface DealRow {
 
 interface OAuthClient {
   client_id: string;
-  client_secret: string | null;
+  client_secret: string;
   redirect_uris: string[];
   grant_types: string[];
   token_endpoint_auth_method: string;
@@ -638,7 +638,7 @@ function defaultClient() {
     const fallbackRedirectUri = PUBLIC_BASE_URL ? `${PUBLIC_BASE_URL}/dashboard` : `http://localhost:${PORT}/dashboard`;
     oauthClients.set(clientId, {
       client_id: clientId,
-      client_secret: process.env.DEFAULT_OAUTH_CLIENT_SECRET || null,
+      client_secret: process.env.DEFAULT_OAUTH_CLIENT_SECRET || '',
       redirect_uris: (process.env.DEFAULT_OAUTH_REDIRECT_URIS || fallbackRedirectUri).split(',').map(v => v.trim()).filter(Boolean),
       grant_types: ['authorization_code', 'refresh_token'],
       token_endpoint_auth_method: 'none',
@@ -696,7 +696,7 @@ app.post('/register', (req, res) => {
   const redirectUris = Array.isArray(req.body.redirect_uris) ? req.body.redirect_uris : [];
   const tokenMethod = req.body.token_endpoint_auth_method || 'none';
   const clientId = `client_${uuidv4()}`;
-  const clientSecret = tokenMethod === 'none' ? null : randomToken();
+  const clientSecret = tokenMethod === 'none' ? '' : randomToken();
   const client = {
     client_id: clientId,
     client_secret: clientSecret,
