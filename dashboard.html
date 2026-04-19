@@ -41,23 +41,6 @@
       <section class="stats" id="stats" aria-label="Saved deal summary"></section>
 
       <div class="deal-list" id="deal-list"></div>
-
-      <section id="mcp-token-section" style="display:none;margin-top:32px">
-        <div style="background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px 24px">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:10px">
-            <div>
-              <div style="font-weight:800;font-size:0.95rem">Claude.ai MCP connection</div>
-              <div style="color:var(--muted);font-size:0.85rem;margin-top:2px">Use this URL to connect Deal Analyzer in Claude.ai settings</div>
-            </div>
-            <button id="regen-token-btn" class="button secondary" style="font-size:0.85rem;min-height:36px;padding:6px 12px">Regenerate</button>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <input id="mcp-url-display" readonly style="flex:1;min-width:200px;font-family:monospace;font-size:0.82rem;background:#f7f6f1;color:var(--ink)" />
-            <button id="copy-mcp-url-btn" class="button" style="font-size:0.85rem;min-height:36px;padding:6px 14px">Copy</button>
-          </div>
-          <div id="token-status" style="font-size:0.82rem;color:var(--muted);margin-top:8px"></div>
-        </div>
-      </section>
     </main>
   </div>
 
@@ -67,7 +50,6 @@
         document.getElementById('user-label').textContent = user.displayName || user.email || '';
         document.getElementById('logout-link').style.display = '';
         loadDeals().catch(() => { renderStats([]); renderDeals([]); });
-        loadMcpToken();
       } else {
         document.getElementById('signin-link').style.display = '';
         renderStats([]);
@@ -156,41 +138,6 @@
         });
       });
     }
-
-    async function loadMcpToken() {
-      const res = await fetch('/api-token');
-      const data = await res.json();
-      const token = data.token;
-      if (token) showMcpToken(token);
-      else {
-        const gen = await fetch('/api-token/generate', { method: 'POST' });
-        const d = await gen.json();
-        showMcpToken(d.token);
-      }
-    }
-
-    function showMcpToken(token) {
-      const base = window.location.origin;
-      const url = `${base}/mcp?token=${token}`;
-      document.getElementById('mcp-url-display').value = url;
-      document.getElementById('mcp-token-section').style.display = '';
-    }
-
-    document.getElementById('copy-mcp-url-btn').addEventListener('click', () => {
-      const val = document.getElementById('mcp-url-display').value;
-      navigator.clipboard.writeText(val).then(() => {
-        document.getElementById('token-status').textContent = 'Copied!';
-        setTimeout(() => document.getElementById('token-status').textContent = '', 2000);
-      });
-    });
-
-    document.getElementById('regen-token-btn').addEventListener('click', async () => {
-      if (!confirm('Regenerate token? Your existing Claude.ai MCP URL will stop working.')) return;
-      const res = await fetch('/api-token/generate', { method: 'POST' });
-      const data = await res.json();
-      showMcpToken(data.token);
-      document.getElementById('token-status').textContent = 'Token regenerated. Update your Claude.ai MCP URL.';
-    });
 
     function recClass(v) { const r = String(v || '').toLowerCase(); return r === 'buy' ? 'buy' : r === 'pass' ? 'pass' : 'hold'; }
     function currency(v) { const n = Number(v || 0); return (n < 0 ? '-' : '') + '$' + Math.abs(Math.round(n)).toLocaleString('en-US'); }
