@@ -1162,51 +1162,103 @@ app.get('/dashboard', (_req, res) => {
   if (fs.existsSync(dashboardPath)) return res.sendFile(dashboardPath);
   return res.type('html').send('<html><body><h2>Dashboard missing</h2><p>Create dashboard.html to render saved deals.</p></body></html>');
 });
-app.post('/mcp', async (req, res) => {
-  const { id, method, params } = req.body || {};
+// Streamable HTTP MCP transport (MCP spec 2025-03-26)
+// Supports both plain JSON and SSE response modes; issues session IDs on initialize.
+function mcpSend(res: express.Response, payload: unknown, sessionId?: string) {
+  if (sessionId) res.setHeader('Mcp-Session-Id', sessionId);
+  const accept = (res.req as Request).headers.accept || '';
+  if (accept.includes('text/event-stream')) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.write(`event: message\ndata: ${JSON.stringify(payload)}\n\n`);
+    res.end();
+  } else {
+    res.json(payload);
+  }
+}
+
+async function handleMcpRequest(req: Request, res: express.Response) {
+  const body = Array.isArray(req.body) ? req.body : [req.body || {}];
   const authHeader = req.headers.authorization || '(none)';
   const tokenPreview = authHeader.startsWith('Bearer ') ? authHeader.slice(7, 16) + '…' : authHeader;
-  console.log(`[mcp] method=${method} tool=${params?.name ?? '-'} auth=${tokenPreview}`);
-  try {
-    if (method === 'initialize') return res.json(jsonRpc(id, { protocolVersion: '2024-11-05', serverInfo: { name: APP_NAME, version: APP_VERSION }, capabilities: { tools: {} } }));
-    if (method === 'tools/list') return res.json(jsonRpc(id, { tools }));
-    if (method === 'tools/call') {
-      const name = params?.name;
-      const args = params?.arguments || {};
-      if (name === 'analyzeDeal') return res.json(jsonRpc(id, buildAnalyzeToolResult(calculateDeal(args))));
-      if (name === 'parseListing') {
-        const parsed = await parseListing(args);
-        return res.json(jsonRpc(id, { content: [{ type: 'text', text: JSON.stringify(parsed, null, 2) }], structuredContent: parsed }));
+
+  // Batch: respond with array; single: respond with object
+  const isBatch = Array.isArray(req.body);
+  const results: unknown[] = [];
+
+  for (const msg of body) {
+    const { id, method, params } = msg;
+    console.log(`[mcp] method=${method} tool=${params?.name ?? '-'} auth=${tokenPreview}`);
+    try {
+      if (method === 'initialize') {
+        const sessionId = uuidv4();
+        const result = jsonRpc(id, { protocolVersion: '2025-03-26', serverInfo: { name: APP_NAME, version: APP_VERSION }, capabilities: { tools: {} } });
+        if (!isBatch) { mcpSend(res, result, sessionId); return; }
+        res.setHeader('Mcp-Session-Id', sessionId);
+        results.push(result); continue;
       }
-      if (name === 'analyzeListing') {
-        const parsed = await parseListing(args);
-        const merged = mergeListingWithOverrides(parsed, args);
-        return res.json(jsonRpc(id, buildAnalyzeToolResult(calculateDeal(merged), { parsedListing: parsed })));
-      }
-      if (name === 'compareDeals') return res.json(jsonRpc(id, buildCompareToolResult(compareDeals(args.deals || []))));
-      if (name === 'saveDeal' || name === 'getDeals') {
-        const user = sessionOrBearerUser(req);
-        if (name === 'getDeals') {
-          try {
-            if (!user) return res.json(jsonRpc(id, { content: [{ type: 'text', text: 'Not authenticated — reconnect Deal Analyzer in ChatGPT settings to load saved deals.' }], structuredContent: { deals: [], authenticated: false } }));
-            const deals = getSavedDeals(user.id);
-            return res.json(jsonRpc(id, { content: [{ type: 'text', text: `Found ${deals.length} deals` }], structuredContent: { deals, count: deals.length } }));
-          } catch (err) {
-            return res.json(jsonRpc(id, { content: [{ type: 'text', text: `getDeals error: ${errorMessage(err, 'unknown')} | user=${user?.id ?? 'null'} | dbPath=${dbPath}` }], structuredContent: { deals: [], error: errorMessage(err, 'unknown') } }));
+      if (method === 'notifications/initialized') { results.push(null); continue; }
+      if (method === 'ping') { results.push(jsonRpc(id, {})); continue; }
+      if (method === 'tools/list') { results.push(jsonRpc(id, { tools })); continue; }
+      if (method === 'tools/call') {
+        const name = params?.name;
+        const args = params?.arguments || {};
+        let result: unknown;
+        if (name === 'analyzeDeal') {
+          result = jsonRpc(id, buildAnalyzeToolResult(calculateDeal(args)));
+        } else if (name === 'parseListing') {
+          const parsed = await parseListing(args);
+          result = jsonRpc(id, { content: [{ type: 'text', text: JSON.stringify(parsed, null, 2) }], structuredContent: parsed });
+        } else if (name === 'analyzeListing') {
+          const parsed = await parseListing(args);
+          result = jsonRpc(id, buildAnalyzeToolResult(calculateDeal(mergeListingWithOverrides(parsed, args)), { parsedListing: parsed }));
+        } else if (name === 'compareDeals') {
+          result = jsonRpc(id, buildCompareToolResult(compareDeals(args.deals || [])));
+        } else if (name === 'saveDeal' || name === 'getDeals') {
+          const user = sessionOrBearerUser(req);
+          if (name === 'getDeals') {
+            try {
+              if (!user) { result = jsonRpc(id, { content: [{ type: 'text', text: 'Not authenticated — reconnect Deal Analyzer in ChatGPT settings to load saved deals.' }], structuredContent: { deals: [], authenticated: false } }); }
+              else { const deals = getSavedDeals(user.id); result = jsonRpc(id, { content: [{ type: 'text', text: `Found ${deals.length} deals` }], structuredContent: { deals, count: deals.length } }); }
+            } catch (err) {
+              result = jsonRpc(id, { content: [{ type: 'text', text: `getDeals error: ${errorMessage(err, 'unknown')} | user=${user?.id ?? 'null'} | dbPath=${dbPath}` }], structuredContent: { deals: [], error: errorMessage(err, 'unknown') } });
+            }
+          } else {
+            if (!user && !ALLOW_ANONYMOUS_MODE) { result = jsonRpc(id, { content: [{ type: 'text', text: 'Authentication required to save deals. Please reconnect Deal Analyzer in ChatGPT settings.' }], structuredContent: { error: 'unauthenticated' } }); }
+            else { const analysis = calculateDeal(args); const savedId = saveDealRecord(args, analysis, user ? user.id : null); result = jsonRpc(id, { content: [{ type: 'text', text: 'Deal saved successfully' }], structuredContent: { id: savedId, ...analysis } }); }
           }
+        } else {
+          result = jsonRpcError(id, -32601, 'Unknown tool');
         }
-        if (!user && !ALLOW_ANONYMOUS_MODE) return res.json(jsonRpc(id, { content: [{ type: 'text', text: 'Authentication required to save deals. Please reconnect Deal Analyzer in ChatGPT settings.' }], structuredContent: { error: 'unauthenticated' } }));
-        const analysis = calculateDeal(args);
-        const savedId = saveDealRecord(args, analysis, user ? user.id : null);
-        return res.json(jsonRpc(id, { content: [{ type: 'text', text: 'Deal saved successfully' }], structuredContent: { id: savedId, ...analysis } }));
+        results.push(result); continue;
       }
-      return res.json(jsonRpcError(id, -32601, 'Unknown tool'));
+      results.push(jsonRpcError(id, -32601, 'Unknown method'));
+    } catch (error) {
+      results.push(jsonRpcError(id, -32000, errorMessage(error, 'Server error')));
     }
-    return res.json(jsonRpcError(id, -32601, 'Unknown method'));
-  } catch (error) {
-    return res.json(jsonRpcError(id, -32000, errorMessage(error, 'Server error')));
   }
+
+  const payload = isBatch ? results.filter(r => r !== null) : (results[0] ?? null);
+  mcpSend(res, payload);
+}
+
+// GET /mcp — SSE channel for server-initiated messages (kept alive; we have no push events)
+app.get('/mcp', (req, res) => {
+  const sessionId = (req.headers['mcp-session-id'] as string) || uuidv4();
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Mcp-Session-Id', sessionId);
+  res.write(': connected\n\n');
+  const keepAlive = setInterval(() => res.write(': ping\n\n'), 25000);
+  req.on('close', () => clearInterval(keepAlive));
 });
+
+app.post('/mcp', handleMcpRequest);
+
+// DELETE /mcp — client signals session end
+app.delete('/mcp', (_req, res) => res.sendStatus(200));
 
 app.listen(PORT, () => {
   console.log(`${APP_NAME} listening on port ${PORT}`);
