@@ -654,7 +654,7 @@ app.get('/auth/google', (req, res, next) => {
 });
 app.get('/auth/google/callback', (req, res, next) => {
   if (!googleAuthConfigured) return res.status(503).send('Google OAuth is not configured');
-  return passport.authenticate('google', { failureRedirect: '/' })(req, res, next);
+  return passport.authenticate('google', { failureRedirect: '/', keepSessionInfo: true })(req, res, next);
 }, (req, res) => {
   const returnTo = req.session.returnTo || '/dashboard';
   delete req.session.returnTo;
