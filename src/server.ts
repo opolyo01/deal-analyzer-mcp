@@ -161,6 +161,20 @@ if (!dealColumns.find(c => c.name === 'userId')) {
   db.prepare('ALTER TABLE deals ADD COLUMN userId TEXT').run();
 }
 
+db.prepare(`CREATE TABLE IF NOT EXISTS api_tokens (
+  token TEXT PRIMARY KEY,
+  userId TEXT NOT NULL,
+  createdAt INTEGER NOT NULL
+)`).run();
+
+function dbGetApiToken(token: string): { userId: string } | undefined {
+  return db.prepare('SELECT userId FROM api_tokens WHERE token = ?').get(token) as { userId: string } | undefined;
+}
+function dbUpsertApiToken(userId: string, token: string) {
+  db.prepare('DELETE FROM api_tokens WHERE userId = ?').run(userId);
+  db.prepare('INSERT INTO api_tokens (token, userId, createdAt) VALUES (?, ?, ?)').run(token, userId, Date.now());
+}
+
 db.prepare(`CREATE TABLE IF NOT EXISTS oauth_clients (
   client_id TEXT PRIMARY KEY,
   data TEXT NOT NULL
@@ -319,8 +333,14 @@ function bearerUser(req: Request): AppUser | null {
   if (!tokenRow || (tokenRow.expiresAt ?? 0) < Date.now()) return null;
   return getUserById(tokenRow.userId);
 }
+function apiTokenUser(req: Request): AppUser | null {
+  const token = typeof req.query.token === 'string' ? req.query.token : null;
+  if (!token) return null;
+  const row = dbGetApiToken(token);
+  return row ? getUserById(row.userId) : null;
+}
 function sessionOrBearerUser(req: Request): AppUser | null {
-  return currentUser(req) || bearerUser(req);
+  return currentUser(req) || bearerUser(req) || apiTokenUser(req);
 }
 
 
@@ -1139,6 +1159,20 @@ app.post('/saveDeal', (req, res) => {
   } catch (error) { res.status(500).json({ error: errorMessage(error, 'Failed to save deal.') }); }
 });
 app.get('/agent-config', (_req, res) => { res.json(AGENT_CONFIG); });
+
+app.get('/api-token', (req, res) => {
+  const user = sessionOrBearerUser(req);
+  if (!user) return res.status(401).json({ error: 'login_required' });
+  const existing = db.prepare('SELECT token FROM api_tokens WHERE userId = ?').get(user.id) as { token: string } | undefined;
+  res.json({ token: existing?.token || null });
+});
+app.post('/api-token/generate', (req, res) => {
+  const user = sessionOrBearerUser(req);
+  if (!user) return res.status(401).json({ error: 'login_required' });
+  const token = randomToken();
+  dbUpsertApiToken(user.id, token);
+  res.json({ token });
+});
 app.get('/deals', (req, res) => {
   try {
     const user = sessionOrBearerUser(req);
