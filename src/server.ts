@@ -912,9 +912,13 @@ app.post('/mcp', async (req, res) => {
       if (name === 'saveDeal' || name === 'getDeals') {
         const user = sessionOrBearerUser(req);
         if (name === 'getDeals') {
-          if (!user) return res.json(jsonRpc(id, { content: [{ type: 'text', text: 'Not authenticated — reconnect Deal Analyzer in ChatGPT settings to load saved deals.' }], structuredContent: [] }));
-          const deals = getSavedDeals(user.id);
-          return res.json(jsonRpc(id, { content: [{ type: 'text', text: `Found ${deals.length} deals` }], structuredContent: deals }));
+          try {
+            if (!user) return res.json(jsonRpc(id, { content: [{ type: 'text', text: 'Not authenticated — reconnect Deal Analyzer in ChatGPT settings to load saved deals.' }], structuredContent: [] }));
+            const deals = getSavedDeals(user.id);
+            return res.json(jsonRpc(id, { content: [{ type: 'text', text: `Found ${deals.length} deals` }], structuredContent: deals }));
+          } catch (err) {
+            return res.json(jsonRpc(id, { content: [{ type: 'text', text: `getDeals error: ${errorMessage(err, 'unknown')} | user=${user?.id ?? 'null'} | dbPath=${dbPath}` }], structuredContent: [] }));
+          }
         }
         if (!user && !ALLOW_ANONYMOUS_MODE) return res.json(jsonRpc(id, { content: [{ type: 'text', text: 'Authentication required to save deals. Please reconnect Deal Analyzer in ChatGPT settings.' }], structuredContent: { error: 'unauthenticated' } }));
         const analysis = calculateDeal(args);
