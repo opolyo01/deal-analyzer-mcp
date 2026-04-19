@@ -43,6 +43,18 @@ app.use(passport.session());
 
 // ── Routers ───────────────────────────────────────────────────────────────────
 
+// Rewrite root-path MCP requests (Claude.ai registers without /mcp suffix)
+app.use((req, _res, next) => {
+  if (req.path !== '/') return next();
+  if (
+    ['POST', 'DELETE'].includes(req.method) ||
+    (req.method === 'GET' && req.headers.accept?.includes('application/json'))
+  ) {
+    req.url = '/mcp';
+  }
+  next();
+});
+
 app.use(oauthRouter);
 app.use(mcpRouter);
 
