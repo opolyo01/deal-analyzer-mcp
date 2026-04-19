@@ -1020,13 +1020,30 @@ app.get('/.well-known/oauth-authorization-server', (req, res) => {
     scopes_supported: ['openid', 'profile', 'email', 'deals.read', 'deals.write']
   });
 });
-app.get('/.well-known/oauth-protected-resource', (req, res) => {
+const protectedResourceMeta = (req: Request) => {
   const origin = baseUrl(req);
-  res.json({
+  return {
     resource: `${origin}/mcp`,
     authorization_servers: [origin],
-    bearer_methods_supported: ['header'],
+    bearer_methods_supported: ['header', 'query'],
     scopes_supported: ['deals.read', 'deals.write']
+  };
+};
+app.get('/.well-known/oauth-protected-resource', (req, res) => res.json(protectedResourceMeta(req)));
+// Also serve relative to /mcp path so clients that append to the MCP URL path find it
+app.get('/mcp/.well-known/oauth-protected-resource', (req, res) => res.json(protectedResourceMeta(req)));
+app.get('/mcp/.well-known/oauth-authorization-server', (req, res) => {
+  const origin = baseUrl(req);
+  res.json({
+    issuer: origin,
+    authorization_endpoint: `${origin}/authorize`,
+    token_endpoint: `${origin}/token`,
+    registration_endpoint: `${origin}/register`,
+    response_types_supported: ['code'],
+    grant_types_supported: ['authorization_code', 'refresh_token'],
+    token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
+    code_challenge_methods_supported: ['S256'],
+    scopes_supported: ['openid', 'profile', 'email', 'deals.read', 'deals.write']
   });
 });
 app.post('/register', (req, res) => {
