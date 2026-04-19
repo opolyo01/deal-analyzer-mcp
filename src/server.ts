@@ -136,6 +136,38 @@ if (!dealColumns.find(c => c.name === 'userId')) {
   db.prepare('ALTER TABLE deals ADD COLUMN userId TEXT').run();
 }
 
+db.prepare(`CREATE TABLE IF NOT EXISTS oauth_clients (
+  client_id TEXT PRIMARY KEY,
+  data TEXT NOT NULL
+)`).run();
+db.prepare(`CREATE TABLE IF NOT EXISTS oauth_tokens (
+  token TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  data TEXT NOT NULL,
+  expires_at INTEGER
+)`).run();
+
+function dbGetClient(clientId: string): OAuthClient | undefined {
+  const row = db.prepare('SELECT data FROM oauth_clients WHERE client_id = ?').get(clientId) as { data: string } | undefined;
+  return row ? JSON.parse(row.data) : undefined;
+}
+function dbSetClient(clientId: string, client: OAuthClient) {
+  db.prepare('INSERT OR REPLACE INTO oauth_clients (client_id, data) VALUES (?, ?)').run(clientId, JSON.stringify(client));
+}
+function dbGetToken(token: string, type: string): OAuthCodeRecord | OAuthTokenRecord | undefined {
+  const row = db.prepare('SELECT data, expires_at FROM oauth_tokens WHERE token = ? AND type = ?').get(token, type) as { data: string; expires_at: number | null } | undefined;
+  if (!row) return undefined;
+  if (row.expires_at && row.expires_at < Date.now()) { db.prepare('DELETE FROM oauth_tokens WHERE token = ?').run(token); return undefined; }
+  return JSON.parse(row.data);
+}
+function dbSetToken(token: string, type: string, data: OAuthCodeRecord | OAuthTokenRecord, expiresAt?: number) {
+  db.prepare('INSERT OR REPLACE INTO oauth_tokens (token, type, data, expires_at) VALUES (?, ?, ?, ?)').run(token, type, JSON.stringify(data), expiresAt ?? null);
+}
+function dbDeleteToken(token: string) {
+  db.prepare('DELETE FROM oauth_tokens WHERE token = ?').run(token);
+}
+db.prepare('DELETE FROM oauth_tokens WHERE expires_at IS NOT NULL AND expires_at < ?').run(Date.now());
+
 function configuredSecret(value: string | undefined) {
   if (!value) return false;
   return !['replace-with-', 'paste-your-', 'your-real-', 'your-client-', 'your-secret'].some(prefix => value.startsWith(prefix));
@@ -187,10 +219,24 @@ passport.deserializeUser((id, done) => {
   }
 });
 
-const oauthClients = new Map<string, OAuthClient>();
-const oauthCodes = new Map<string, OAuthCodeRecord>();
-const oauthAccessTokens = new Map<string, OAuthTokenRecord>();
-const oauthRefreshTokens = new Map<string, OAuthTokenRecord>();
+const oauthClients = {
+  get: (id: string) => dbGetClient(id),
+  set: (id: string, c: OAuthClient) => dbSetClient(id, c),
+  has: (id: string) => !!dbGetClient(id),
+};
+const oauthCodes = {
+  get: (token: string) => dbGetToken(token, 'code') as OAuthCodeRecord | undefined,
+  set: (token: string, data: OAuthCodeRecord) => dbSetToken(token, 'code', data, data.expiresAt),
+  delete: (token: string) => dbDeleteToken(token),
+};
+const oauthAccessTokens = {
+  get: (token: string) => dbGetToken(token, 'access') as OAuthTokenRecord | undefined,
+  set: (token: string, data: OAuthTokenRecord) => dbSetToken(token, 'access', data, data.expiresAt),
+};
+const oauthRefreshTokens = {
+  get: (token: string) => dbGetToken(token, 'refresh') as OAuthTokenRecord | undefined,
+  set: (token: string, data: OAuthTokenRecord) => dbSetToken(token, 'refresh', data),
+};
 
 function baseUrl(req: Request) {
   if (PUBLIC_BASE_URL) return PUBLIC_BASE_URL;
