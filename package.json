@@ -6,6 +6,8 @@
     "build": "tsc",
     "check": "tsc --noEmit",
     "dev": "tsx src/server.ts",
+    "eval": "tsx src/eval.ts",
+    "eval:prod": "tsx src/eval.ts https://deal-analyzer-mcp-production.up.railway.app",
     "start": "node dist/server.js"
   },
   "engines": {
