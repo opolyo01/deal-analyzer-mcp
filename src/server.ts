@@ -94,6 +94,8 @@ const DEFAULT_VACANCY_RATE = Number(process.env.DEFAULT_VACANCY_RATE || 0.05);
 const DEFAULT_REPAIRS_RATE = Number(process.env.DEFAULT_REPAIRS_RATE || 0.05);
 const DEFAULT_CAPEX_RATE = Number(process.env.DEFAULT_CAPEX_RATE || 0.05);
 const DEFAULT_MANAGEMENT_RATE = Number(process.env.DEFAULT_MANAGEMENT_RATE || 0.08);
+const DEFAULT_PROPERTY_TAX_RATE = Number(process.env.DEFAULT_PROPERTY_TAX_RATE || 0.011);
+const DEFAULT_INSURANCE_RATE = Number(process.env.DEFAULT_INSURANCE_RATE || 0.0035);
 const PORT = Number(process.env.PORT || 3000);
 const dashboardPath = path.join(projectRoot, 'dashboard.html');
 const PUBLIC_BASE_URL = normalizeBaseUrl(process.env.PUBLIC_BASE_URL);
@@ -109,6 +111,28 @@ const AGENT_CONFIG = {
   bio: process.env.AGENT_BIO || '',
   zillowUrl: process.env.AGENT_ZILLOW_URL || '',
   licenseNumber: process.env.AGENT_LICENSE || '',
+};
+
+const STATE_CODES = new Set([
+  'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'
+]);
+const PROPERTY_TAX_RATE_BY_STATE: JsonRecord = {
+  AL: 0.004, AK: 0.010, AZ: 0.006, AR: 0.006, CA: 0.0075, CO: 0.005, CT: 0.019, DE: 0.006, FL: 0.009, GA: 0.009,
+  HI: 0.003, ID: 0.007, IL: 0.020, IN: 0.0085, IA: 0.015, KS: 0.013, KY: 0.008, LA: 0.006, ME: 0.013, MD: 0.010,
+  MA: 0.011, MI: 0.015, MN: 0.011, MS: 0.007, MO: 0.010, MT: 0.008, NE: 0.016, NV: 0.006, NH: 0.018, NJ: 0.023,
+  NM: 0.007, NY: 0.016, NC: 0.008, ND: 0.009, OH: 0.015, OK: 0.009, OR: 0.009, PA: 0.014, RI: 0.015, SC: 0.006,
+  SD: 0.012, TN: 0.006, TX: 0.016, UT: 0.006, VT: 0.018, VA: 0.008, WA: 0.009, WV: 0.006, WI: 0.017, WY: 0.006, DC: 0.006
+};
+const INSURANCE_STATE_MULTIPLIER: JsonRecord = {
+  AL: 1.25, AK: 1.1, AZ: 0.95, AR: 1.25, CA: 1.25, CO: 1.35, CT: 1.05, DE: 1.0, FL: 2.25, GA: 1.15,
+  HI: 1.15, ID: 0.9, IL: 1.0, IN: 1.0, IA: 1.1, KS: 1.25, KY: 1.05, LA: 1.9, ME: 0.95, MD: 1.0,
+  MA: 1.05, MI: 1.05, MN: 1.15, MS: 1.35, MO: 1.15, MT: 1.05, NE: 1.25, NV: 0.95, NH: 0.95, NJ: 1.05,
+  NM: 1.0, NY: 1.1, NC: 1.15, ND: 1.1, OH: 0.95, OK: 1.55, OR: 0.9, PA: 0.95, RI: 1.1, SC: 1.25,
+  SD: 1.1, TN: 1.05, TX: 1.65, UT: 0.9, VT: 0.95, VA: 0.95, WA: 0.95, WV: 0.95, WI: 0.95, WY: 1.0, DC: 1.0
+};
+const RENT_STATE_MULTIPLIER: JsonRecord = {
+  CA: 1.12, NY: 1.1, MA: 1.08, NJ: 1.06, WA: 1.05, DC: 1.12, CO: 1.04, FL: 1.03, TX: 1.02,
+  IL: 1.0, PA: 0.96, OH: 0.92, MI: 0.92, IN: 0.9, WI: 0.92, MO: 0.9, AL: 0.88, MS: 0.86, WV: 0.84
 };
 
 const dbPath = process.env.DATABASE_PATH ?? path.join(projectRoot, 'deals.db');
@@ -314,12 +338,59 @@ function asCurrency(value: number) {
   const amount = Math.abs(Math.round(value || 0));
   return `${sign}$${amount.toLocaleString('en-US')}`;
 }
+function roundToNearest(value: number, step = 25) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round(value / step) * step;
+}
 function calculateMortgagePayment(principal: number, annualRate: number, termYears: number) {
   if (!principal || principal <= 0) return 0;
   const monthlyRate = annualRate / 12;
   const numberOfPayments = termYears * 12;
   if (!monthlyRate) return principal / numberOfPayments;
   return principal * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
+}
+function hasInputValue(value: unknown) {
+  return value != null && value !== '';
+}
+function normalizeStateCode(value: unknown) {
+  if (typeof value !== 'string') return '';
+  const code = value.trim().toUpperCase();
+  return STATE_CODES.has(code) ? code : '';
+}
+function inferLocation(input: JsonRecord = {}) {
+  const explicitState = normalizeStateCode(input.state);
+  const address = String(input.address || input.label || '').trim();
+  const sourceUrl = String(input.sourceUrl || input.url || '').trim();
+  let city = typeof input.city === 'string' ? input.city.trim() : '';
+  let state = explicitState;
+  let confidence = state ? 'medium' : 'low';
+
+  const addressMatch = address.match(/,\s*([^,]+),\s*([A-Z]{2})(?:\s+\d{5})?\b/);
+  if (!state && addressMatch) {
+    state = normalizeStateCode(addressMatch[2]);
+    city = city || addressMatch[1].trim();
+    confidence = state ? 'medium' : confidence;
+  }
+  const redfinMatch = sourceUrl.match(/\/([A-Z]{2})\/([^/?#]+)/);
+  if (!state && redfinMatch) {
+    state = normalizeStateCode(redfinMatch[1]);
+    city = city || decodeURIComponent(redfinMatch[2]).replace(/-/g, ' ');
+    confidence = state ? 'medium' : confidence;
+  }
+  const zillowMatch = sourceUrl.match(/-([A-Za-z-]+)-([A-Z]{2})-\d{5}/);
+  if (!state && zillowMatch) {
+    state = normalizeStateCode(zillowMatch[2]);
+    city = city || zillowMatch[1].replace(/-/g, ' ');
+    confidence = state ? 'medium' : confidence;
+  }
+  return { city, state, confidence };
+}
+function propertyKind(propertyType = '') {
+  const kind = String(propertyType || '').toLowerCase();
+  if (kind.includes('condo') || kind.includes('condominium')) return 'condo';
+  if (kind.includes('townhouse') || kind.includes('townhome')) return 'townhouse';
+  if (kind.includes('duplex') || kind.includes('triplex') || kind.includes('quad') || kind.includes('multi')) return 'multifamily';
+  return 'singleFamily';
 }
 function parseDownPayment(input: JsonRecord, price: number) {
   if (input.downPaymentAmount != null) return Number(input.downPaymentAmount);
@@ -330,23 +401,129 @@ function parseDownPayment(input: JsonRecord, price: number) {
   }
   return price * 0.2;
 }
-function estimateRent(price: number, propertyType = '') {
-  if (!price) return { rent: 0, estimated: true, confidence: 'low' };
+function estimateRent(price: number, propertyType = '', location: JsonRecord = {}) {
+  if (!price) return { rent: 0, low: 0, high: 0, estimated: true, confidence: 'low', method: 'price-rent heuristic', compsUsed: 0 };
   const kind = String(propertyType || '').toLowerCase();
   let ratio = 0.006;
   if (price < 300000) ratio = 0.008;
   if (price > 800000) ratio = 0.005;
   if (kind.includes('multi') || kind.includes('duplex') || kind.includes('triplex') || kind.includes('quad')) ratio += 0.001;
   if (kind.includes('condo')) ratio -= 0.0005;
-  return { rent: Math.round(price * ratio), estimated: true, confidence: price >= 250000 && price <= 900000 ? 'medium' : 'low' };
+  const stateMultiplier = location.state ? (RENT_STATE_MULTIPLIER[location.state] ?? 1) : 1;
+  const rent = roundToNearest(price * ratio * stateMultiplier, 25);
+  return {
+    rent,
+    low: roundToNearest(rent * 0.88, 25),
+    high: roundToNearest(rent * 1.12, 25),
+    estimated: true,
+    confidence: price >= 250000 && price <= 900000 ? (location.state ? 'medium' : 'low') : 'low',
+    method: 'price-rent heuristic',
+    compsUsed: 0,
+    location
+  };
+}
+function normalizeRentComps(input: JsonRecord = {}) {
+  const raw = Array.isArray(input.rentComps) ? input.rentComps : [];
+  return raw.flatMap((comp: JsonRecord) => {
+    const rent = Number(comp?.rent || comp?.monthlyRent || 0);
+    if (!Number.isFinite(rent) || rent <= 0) return [];
+    return [{
+      rent,
+      beds: comp.beds != null ? Number(comp.beds) : null,
+      baths: comp.baths != null ? Number(comp.baths) : null,
+      sqft: comp.sqft != null ? Number(comp.sqft) : null,
+      distanceMiles: comp.distanceMiles != null ? Number(comp.distanceMiles) : null,
+      source: comp.source || '',
+      address: comp.address || ''
+    }];
+  });
+}
+function percentile(values: number[], p: number) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.min(sorted.length - 1, Math.max(0, (sorted.length - 1) * p));
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+  if (lower === upper) return sorted[lower];
+  return sorted[lower] + ((sorted[upper] - sorted[lower]) * (index - lower));
+}
+function estimateMarketRent(input: JsonRecord = {}, location: JsonRecord = {}) {
+  const priceEstimate = estimateRent(Number(input.price || 0), input.propertyType, location);
+  const comps = normalizeRentComps(input);
+  if (comps.length) {
+    const rents = comps.map(comp => comp.rent);
+    const rent = roundToNearest(percentile(rents, 0.5), 25);
+    return {
+      rent,
+      low: roundToNearest(percentile(rents, 0.25), 25),
+      high: roundToNearest(percentile(rents, 0.75), 25),
+      estimated: true,
+      confidence: comps.length >= 3 ? 'medium' : 'low',
+      method: 'provided rent comps',
+      compsUsed: comps.length,
+      comps: comps.slice(0, 8),
+      priceEstimate,
+      location
+    };
+  }
+  return priceEstimate;
+}
+function estimatePropertyTaxes(price: number, location: JsonRecord = {}) {
+  if (!price || price <= 0) return null;
+  const state = normalizeStateCode(location.state);
+  const rate = state ? (PROPERTY_TAX_RATE_BY_STATE[state] ?? DEFAULT_PROPERTY_TAX_RATE) : DEFAULT_PROPERTY_TAX_RATE;
+  const annual = roundToNearest(price * rate, 50);
+  return {
+    annual,
+    monthly: round(annual / 12),
+    rate,
+    state: state || null,
+    confidence: state ? 'medium' : 'low',
+    method: state ? 'state effective-rate heuristic' : 'default national heuristic'
+  };
+}
+function estimateInsurance(price: number, propertyType = '', location: JsonRecord = {}) {
+  if (!price || price <= 0) return null;
+  const kind = propertyKind(propertyType);
+  const profile: JsonRecord = {
+    condo: { rate: 0.0018, minimum: 650 },
+    townhouse: { rate: 0.0025, minimum: 900 },
+    multifamily: { rate: 0.0045, minimum: 1600 },
+    singleFamily: { rate: DEFAULT_INSURANCE_RATE, minimum: 1100 }
+  }[kind];
+  const state = normalizeStateCode(location.state);
+  const multiplier = state ? (INSURANCE_STATE_MULTIPLIER[state] ?? 1) : 1;
+  const annual = roundToNearest(Math.max(profile.minimum, price * profile.rate * multiplier), 25);
+  return {
+    annual,
+    monthly: round(annual / 12),
+    rate: profile.rate,
+    stateMultiplier: multiplier,
+    propertyType: kind,
+    state: state || null,
+    confidence: state && propertyType ? 'medium' : 'low',
+    method: 'property-type insurance heuristic'
+  };
+}
+function propertyTypeUsuallyHasHoa(propertyType = '') {
+  const kind = String(propertyType || '').toLowerCase();
+  return kind.includes('condo') || kind.includes('townhome') || kind.includes('townhouse');
 }
 function normalizeDealInput(input: JsonRecord = {}) {
   const price = Number(input.price || 0);
-  const rentProvided = input.rent != null && input.rent !== '';
-  let rentEstimate: ReturnType<typeof estimateRent> | null = null;
+  const propertyType = input.propertyType || '';
+  const location = inferLocation(input);
+  const rentProvided = hasInputValue(input.rent);
+  const taxesProvided = hasInputValue(input.taxes);
+  const insuranceProvided = hasInputValue(input.insurance);
+  const hoaProvided = hasInputValue(input.hoa);
+  const marketRentEstimate = estimateMarketRent({ ...input, price, propertyType }, location);
+  const taxEstimate = taxesProvided ? null : estimatePropertyTaxes(price, location);
+  const insuranceEstimate = insuranceProvided ? null : estimateInsurance(price, propertyType, location);
+  let rentEstimate: ReturnType<typeof estimateMarketRent> | null = null;
   let rent = Number(input.rent || 0);
   if (!rentProvided) {
-    rentEstimate = estimateRent(price, input.propertyType);
+    rentEstimate = marketRentEstimate;
     rent = rentEstimate.rent;
   }
   const downPaymentAmount = parseDownPayment(input, price);
@@ -354,13 +531,23 @@ function normalizeDealInput(input: JsonRecord = {}) {
     label: input.label || input.address || input.sourceUrl || '',
     address: input.address || '',
     sourceUrl: input.sourceUrl || input.url || '',
+    location,
     price,
     rent,
+    rentProvided,
     estimatedRent: !rentProvided,
     estimatedRentConfidence: rentEstimate ? rentEstimate.confidence : null,
-    taxes: Number(input.taxes || 0),
-    insurance: Number(input.insurance || 0),
-    hoa: Number(input.hoa || 0),
+    marketRent: marketRentEstimate,
+    taxes: taxesProvided ? Number(input.taxes) : (taxEstimate ? taxEstimate.annual : 0),
+    insurance: insuranceProvided ? Number(input.insurance) : (insuranceEstimate ? insuranceEstimate.annual : 0),
+    hoa: hoaProvided ? Number(input.hoa) : 0,
+    taxesProvided,
+    insuranceProvided,
+    hoaProvided,
+    taxesEstimated: !taxesProvided && !!taxEstimate,
+    insuranceEstimated: !insuranceProvided && !!insuranceEstimate,
+    taxEstimate,
+    insuranceEstimate,
     otherMonthlyCosts: Number(input.otherMonthlyCosts || 0),
     rate: input.rate != null ? Number(input.rate) : DEFAULT_RATE,
     termYears: input.termYears != null ? Number(input.termYears) : DEFAULT_TERM_YEARS,
@@ -370,7 +557,7 @@ function normalizeDealInput(input: JsonRecord = {}) {
     repairsRate: input.repairsRate != null ? Number(input.repairsRate) : DEFAULT_REPAIRS_RATE,
     capexRate: input.capexRate != null ? Number(input.capexRate) : DEFAULT_CAPEX_RATE,
     managementRate: input.managementRate != null ? Number(input.managementRate) : DEFAULT_MANAGEMENT_RATE,
-    propertyType: input.propertyType || '',
+    propertyType,
     beds: input.beds != null ? Number(input.beds) : null,
     baths: input.baths != null ? Number(input.baths) : null,
     sqft: input.sqft != null ? Number(input.sqft) : null
@@ -402,6 +589,12 @@ function calculateDeal(rawInput: JsonRecord = {}) {
   const breakEvenRent = monthlyAllInCost;
 
   let score = 5;
+  const missingTaxes = !input.taxesProvided && !input.taxesEstimated;
+  const missingInsurance = !input.insuranceProvided && !input.insuranceEstimated;
+  const estimatedTaxes = input.taxesEstimated;
+  const estimatedInsurance = input.insuranceEstimated;
+  const estimatedCriticalExpense = estimatedTaxes || estimatedInsurance;
+  const missingLikelyHoa = propertyTypeUsuallyHasHoa(input.propertyType) && !input.hoaProvided;
   if (monthlyCashFlow >= 500) score += 3;
   else if (monthlyCashFlow >= 200) score += 2;
   else if (monthlyCashFlow > 0) score += 1;
@@ -416,6 +609,14 @@ function calculateDeal(rawInput: JsonRecord = {}) {
   if (dscr >= 1.30) score += 1;
   else if (dscr > 0 && dscr < 1.0) score -= 1;
   if (input.downPaymentPercent >= 0.25) score += 1;
+  if (missingTaxes) score -= 1;
+  if (missingInsurance) score -= 1;
+  if (missingLikelyHoa) score -= 1;
+  if (input.estimatedRent && (missingTaxes || missingInsurance)) score = Math.min(score, 6);
+  else if (missingTaxes || missingInsurance) score = Math.min(score, 7);
+  if (input.estimatedRent && estimatedCriticalExpense) score = Math.min(score, 7);
+  else if (estimatedCriticalExpense) score = Math.min(score, 8);
+  if (missingLikelyHoa) score = Math.min(score, 6);
   score = clamp(score, 1, 10);
 
   let recommendation = 'HOLD';
@@ -428,8 +629,14 @@ function calculateDeal(rawInput: JsonRecord = {}) {
   if (monthlyCashFlow < 0) risks.push('Negative monthly cash flow at current assumptions');
   if (capRate < 0.05) risks.push('Cap rate is weak for a leveraged rental');
   if (cashOnCashReturn < 0.05) risks.push('Cash-on-cash return is modest');
-  if (input.taxes === 0) risks.push('Property taxes are missing, so the model may be optimistic');
-  if (input.insurance === 0) risks.push('Insurance is missing, so monthly cost may be understated');
+  if (missingTaxes) risks.push('Property taxes are missing, so the model may be optimistic');
+  else if (estimatedTaxes) risks.push(`Property taxes are estimated from ${input.taxEstimate?.state || 'default'} location assumptions; verify the actual tax bill`);
+  else if (input.taxes === 0) risks.push('Property taxes are explicitly set to zero');
+  if (missingInsurance) risks.push('Insurance is missing, so monthly cost may be understated');
+  else if (estimatedInsurance) risks.push(`Insurance is estimated from property type and location; verify with a quote`);
+  else if (input.insurance === 0) risks.push('Insurance is explicitly set to zero');
+  if (missingLikelyHoa) risks.push('HOA is missing for a condo/townhome-style property, so monthly cost may be understated');
+  if (input.rentProvided && input.marketRent?.high && input.rent > input.marketRent.high * 1.05) risks.push('Provided rent is above the model market-rent range; verify with current comps');
   if (dscr > 0 && dscr < 1.1) risks.push('Debt coverage is thin');
   if (monthlyCashFlow > 0) strengths.push('Positive projected monthly cash flow');
   if (capRate >= 0.06) strengths.push('Cap rate clears a basic rental threshold');
@@ -469,6 +676,17 @@ function calculateDeal(rawInput: JsonRecord = {}) {
         capex: round(monthlyCapex),
         management: round(monthlyManagement)
       },
+      missingInputs: {
+        taxes: missingTaxes,
+        insurance: missingInsurance,
+        hoa: missingLikelyHoa
+      },
+      estimatedInputs: {
+        rent: input.estimatedRent,
+        taxes: estimatedTaxes,
+        insurance: estimatedInsurance
+      },
+      marketRent: input.marketRent,
       estimatedRent: input.estimatedRent,
       estimatedRentConfidence: input.estimatedRentConfidence
     },
@@ -480,7 +698,10 @@ function calculateDeal(rawInput: JsonRecord = {}) {
       vacancyRate: input.vacancyRate,
       repairsRate: input.repairsRate,
       capexRate: input.capexRate,
-      managementRate: input.managementRate
+      managementRate: input.managementRate,
+      location: input.location,
+      taxEstimate: input.taxEstimate,
+      insuranceEstimate: input.insuranceEstimate
     },
     strengths,
     risks
@@ -489,11 +710,19 @@ function calculateDeal(rawInput: JsonRecord = {}) {
 function tryParseJson(value: string) {
   try { return JSON.parse(value); } catch { return null; }
 }
-function extractMoney(text: unknown) {
+function extractMoney(text: unknown, allowSmallBare = false) {
   if (!text || typeof text !== 'string') return null;
-  const match = text.match(/\$?\s*([\d,]{4,})(?:\.\d{2})?/);
+  const match = text.match(/(\$)?\s*([\d,]+)(?:\.\d{2})?/);
   if (!match) return null;
-  return Number(match[1].replace(/,/g, ''));
+  const digits = match[2].replace(/,/g, '');
+  if (!match[1] && !allowSmallBare && digits.length < 4) return null;
+  return Number(digits);
+}
+function hasRentContext(text: string) {
+  return /\b(rent|rental|lease)\b/i.test(text);
+}
+function hasNonRentMonthlyCostContext(text: string) {
+  return /\b(hoa|dues?|association|condo\s+fee|mortgage|payment|principal|interest|tax(?:es)?|insurance|piti|assessment)\b/i.test(text);
 }
 function normalizePropertyType(raw: string): string {
   const s = raw.toLowerCase();
@@ -522,12 +751,12 @@ function walkForNumbers(node: unknown, out: JsonRecord, depth = 0) {
       const addressMatch = value.match(/\d+ .+, [A-Za-z .'-]+, [A-Z]{2} \d{5}/);
       if (!out.address && addressMatch) out.address = addressMatch[0];
       if (!out.propertyType && /propertytype|hometype|^type$|propertystyle/.test(k)) out.propertyType = normalizePropertyType(value);
-      const money = extractMoney(value);
+      const money = extractMoney(value, /hoa|associationfee|condofee/.test(k));
       if (money != null && money > 0) {
         if (out.price == null && /listprice|listingprice|price|amount/.test(k)) out.price = money;
         if (out.rent == null && /rent/.test(k)) out.rent = money;
         if (out.taxes == null && /tax/.test(k)) out.taxes = money;
-        if (out.hoa == null && /hoa/.test(k)) out.hoa = money;
+        if (out.hoa == null && /hoa|associationfee|condofee/.test(k)) out.hoa = money;
       }
     }
     walkForNumbers(value, out, depth + 1);
@@ -554,18 +783,30 @@ function parseListingText(text: unknown, sourceUrl = ''): JsonRecord {
   const hoaMatch = bodyText.match(/hoa(?:\s+(?:fee|dues|due))?\s*:?\s*(\$[\d,]+)\s*(?:\/\s*mo(?:nth)?)?/i)
     || bodyText.match(/(\$[\d,]+)\s*(?:\/\s*mo[a-z]*)?\s+hoa\s*(?:dues?|fee)?/i)
     || bodyText.match(/(?:homeowner[s']?\s+assoc[^$]{0,30})\s*(\$[\d,]+)/i);
-  if (hoaMatch) result.hoa = extractMoney(hoaMatch[1]);
-  // Rent — exclude the HOA amount from the greedy $X/mo fallback
+  if (hoaMatch) result.hoa = extractMoney(hoaMatch[1], true);
+  // Rent — keep generic $X/mo matches away from mortgage/payment/HOA/tax text.
   const hoaAmountStr = result.hoa != null ? String(result.hoa) : null;
   for (const pattern of [
     /(?:monthly\s+rent|estimated\s+rent|rent(?:\s+estimate)?)\s*:?\s*(\$[\d,]+)/i,
-    /(\$[\d,]+)\s*\/\s*mo(?:nth)?/i
+    /\b(?:rent|rental|lease)\b[^$]{0,80}(\$[\d,]+)\s*\/\s*mo(?:nth)?/i,
+    /(\$[\d,]+)\s*\/\s*mo(?:nth)?[^.]{0,80}\b(?:rent|rental|lease)\b/i
   ]) {
     const match = bodyText.match(pattern);
     if (match) {
       const val = extractMoney(match[1] || match[0]);
       if (hoaAmountStr && String(val) === hoaAmountStr) continue;
       result.rent = val; break;
+    }
+  }
+  if (result.rent == null) {
+    for (const match of bodyText.matchAll(/(\$[\d,]+)\s*\/\s*mo(?:nth)?/gi)) {
+      const val = extractMoney(match[1] || match[0]);
+      if (val == null || (hoaAmountStr && String(val) === hoaAmountStr)) continue;
+      const index = match.index ?? 0;
+      const context = bodyText.slice(Math.max(0, index - 80), index + match[0].length + 80);
+      if (hasNonRentMonthlyCostContext(context) && !hasRentContext(context)) continue;
+      result.rent = val;
+      break;
     }
   }
   // Taxes — prefer annual; if monthly found, multiply by 12
@@ -659,6 +900,15 @@ async function parseListing(input: JsonRecord = {}) {
   });
   return extractStructuredDataFromHtml(response.data, url);
 }
+function mergeListingWithOverrides(parsed: JsonRecord, overrides: JsonRecord) {
+  const merged = { ...parsed };
+  for (const [key, value] of Object.entries(overrides)) {
+    if (!hasInputValue(value)) continue;
+    merged[key] = value;
+  }
+  merged.sourceUrl = overrides.url || parsed.sourceUrl;
+  return merged;
+}
 function compareDeals(rawDeals: JsonRecord[] = []) {
   const analyses = rawDeals.map((deal, index) => ({ rank: index + 1, label: calculateDeal(deal).input.label || `Deal ${index + 1}`, analysis: calculateDeal(deal) }));
   analyses.sort((a, b) => (b.analysis.summary.score - a.analysis.summary.score) || (b.analysis.summary.monthlyCashFlow - a.analysis.summary.monthlyCashFlow));
@@ -667,7 +917,7 @@ function compareDeals(rawDeals: JsonRecord[] = []) {
 }
 
 const tools = [
-  { name: 'analyzeDeal', title: 'Analyze real estate deal', description: 'Underwrite a rental property and score it 1-10. Only price is required — rent is estimated from price if omitted, and taxes/insurance default to 0 with a risk warning. Accepts: price, rent, taxes (annual), insurance (annual), hoa (monthly), otherMonthlyCosts, vacancyRate, repairsRate, capexRate, managementRate (all rates as decimals, e.g. 0.05), downPaymentPercent (decimal), rate (interest, decimal), termYears, propertyType, label, address. Returns score, recommendation (BUY/HOLD/PASS), monthly cash flow, cap rate, cash-on-cash return, break-even rent, and a risks/strengths list.', inputSchema: { type: 'object', additionalProperties: true, properties: { price: { type: 'number', description: 'Purchase price in dollars' }, rent: { type: 'number', description: 'Monthly rent in dollars. Estimated from price if omitted.' }, taxes: { type: 'number', description: 'Annual property taxes in dollars' }, insurance: { type: 'number', description: 'Annual insurance in dollars' }, hoa: { type: 'number', description: 'Monthly HOA fee' }, downPaymentPercent: { type: 'number', description: 'Down payment as decimal, e.g. 0.20 for 20%' }, rate: { type: 'number', description: 'Annual interest rate as decimal, e.g. 0.065' }, propertyType: { type: 'string' }, label: { type: 'string' }, address: { type: 'string' } }, required: ['price'] } },
+  { name: 'analyzeDeal', title: 'Analyze real estate deal', description: 'Underwrite a rental property and score it 1-10. Only price is required — rent, taxes, and insurance are estimated when omitted. Accepts: price, rent, taxes (annual), insurance (annual), hoa (monthly), rentComps, city/state/address, otherMonthlyCosts, vacancyRate, repairsRate, capexRate, managementRate, downPaymentPercent, rate, termYears, propertyType, label. Returns score, recommendation (BUY/HOLD/PASS), monthly cash flow, cap rate, cash-on-cash return, break-even rent, estimated inputs, market-rent range, and risks/strengths.', inputSchema: { type: 'object', additionalProperties: true, properties: { price: { type: 'number', description: 'Purchase price in dollars' }, rent: { type: 'number', description: 'Monthly rent in dollars. Estimated from market heuristics or rentComps if omitted.' }, rentComps: { type: 'array', description: 'Optional current rental comps with rent, beds, baths, sqft, distanceMiles, source, and address', items: { type: 'object', additionalProperties: true } }, taxes: { type: 'number', description: 'Annual property taxes in dollars. Estimated from location if omitted.' }, insurance: { type: 'number', description: 'Annual insurance in dollars. Estimated from property type and location if omitted.' }, hoa: { type: 'number', description: 'Monthly HOA fee' }, downPaymentPercent: { type: 'number', description: 'Down payment as decimal, e.g. 0.20 for 20%' }, rate: { type: 'number', description: 'Annual interest rate as decimal, e.g. 0.065' }, propertyType: { type: 'string' }, label: { type: 'string' }, address: { type: 'string' }, city: { type: 'string' }, state: { type: 'string', description: 'Two-letter state code' } }, required: ['price'] } },
   { name: 'parseListing', title: 'Parse listing', description: 'Extract fields (price, rent, taxes, HOA, address, property type, photo) from a Zillow or Redfin URL or raw listing text.', inputSchema: { type: 'object', properties: { url: { type: 'string' }, listingText: { type: 'string' } } } },
   { name: 'analyzeListing', title: 'Parse and analyze listing', description: 'Parse a Zillow or Redfin listing URL or text, then immediately underwrite it. Pass any additional known fields (rent, taxes, etc.) alongside the url to override parsed values. Best single tool when the user shares a listing link.', inputSchema: { type: 'object', additionalProperties: true, properties: { url: { type: 'string' }, listingText: { type: 'string' } } } },
   { name: 'compareDeals', title: 'Compare multiple deals', description: 'Rank multiple deals side by side by score and cash flow. Each deal in the array accepts the same fields as analyzeDeal.', inputSchema: { type: 'object', properties: { deals: { type: 'array', minItems: 2, items: { type: 'object' } } }, required: ['deals'] } },
@@ -679,8 +929,19 @@ type JsonRpcId = string | number | null | undefined;
 function jsonRpc(id: JsonRpcId, result: unknown) { return { jsonrpc: '2.0', id: id ?? null, result }; }
 function jsonRpcError(id: JsonRpcId, code: number, message: string) { return { jsonrpc: '2.0', id: id ?? null, error: { code, message } }; }
 function buildAnalyzeToolResult(result: ReturnType<typeof calculateDeal>, extra: JsonRecord = {}) {
+  const lines = [
+    `Deal score: ${result.summary.score}/10 (${result.summary.recommendation})`,
+    `Cash flow after debt: ${asCurrency(result.summary.monthlyCashFlow)}/mo`,
+    `Cash flow before principal: ${asCurrency(result.summary.monthlyCashFlowBeforePrincipal)}/mo`,
+    result.summary.estimatedRent ? `Rent: ${asCurrency(result.input.rent)} (estimated)` : `Rent: ${asCurrency(result.input.rent)}/mo`,
+    `Break-even rent: ${asCurrency(result.summary.breakEvenRent)}/mo`
+  ];
+  if (result.summary.estimatedInputs.taxes || result.summary.estimatedInputs.insurance) {
+    lines.push(`Estimated expenses: taxes ${asCurrency(result.input.taxes)}/yr, insurance ${asCurrency(result.input.insurance)}/yr`);
+  }
+  if (result.risks.length) lines.push(`Key risks: ${result.risks.slice(0, 3).join('; ')}`);
   return {
-    content: [{ type: 'text', text: [`Deal score: ${result.summary.score}/10 (${result.summary.recommendation})`, `Cash flow after debt: ${asCurrency(result.summary.monthlyCashFlow)}/mo`, `Cash flow before principal: ${asCurrency(result.summary.monthlyCashFlowBeforePrincipal)}/mo`, result.summary.estimatedRent ? `Rent: ${asCurrency(result.input.rent)} (estimated)` : `Rent: ${asCurrency(result.input.rent)}/mo`, `Break-even rent: ${asCurrency(result.summary.breakEvenRent)}/mo`].join('\n') }],
+    content: [{ type: 'text', text: lines.join('\n') }],
     structuredContent: { ...result, ...extra }
   };
 }
@@ -919,7 +1180,7 @@ app.post('/mcp', async (req, res) => {
       }
       if (name === 'analyzeListing') {
         const parsed = await parseListing(args);
-        const merged = { ...args, ...parsed, sourceUrl: args.url || parsed.sourceUrl };
+        const merged = mergeListingWithOverrides(parsed, args);
         return res.json(jsonRpc(id, buildAnalyzeToolResult(calculateDeal(merged), { parsedListing: parsed })));
       }
       if (name === 'compareDeals') return res.json(jsonRpc(id, buildCompareToolResult(compareDeals(args.deals || []))));

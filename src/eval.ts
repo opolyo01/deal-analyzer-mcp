@@ -67,6 +67,35 @@ const cases: Case[] = [
       return null;
     }
   },
+  {
+    prompt: 'do not recommend BUY when condo expenses are missing',
+    tool: 'analyzeDeal',
+    args: { price: 289000, rent: 2168, propertyType: 'Condo' },
+    expect: r => {
+      const s = (r as any).summary;
+      if (!s) return 'missing summary';
+      if (s.recommendation === 'BUY') return 'missing condo expenses should not produce BUY';
+      if (!s.missingInputs?.hoa) return 'expected missing HOA flag';
+      if (!s.estimatedInputs?.taxes) return 'expected estimated taxes flag';
+      if (!s.estimatedInputs?.insurance) return 'expected estimated insurance flag';
+      if (s.monthlyExpenseBreakdown.taxes <= 0) return 'expected estimated taxes in expense breakdown';
+      if (s.monthlyExpenseBreakdown.insurance <= 0) return 'expected estimated insurance in expense breakdown';
+      return null;
+    }
+  },
+  {
+    prompt: 'estimate market rent from provided comps when rent is missing',
+    tool: 'analyzeDeal',
+    args: { price: 400000, propertyType: 'Single family', state: 'IL', rentComps: [{ rent: 1800 }, { rent: 2000 }, { rent: 2200 }] },
+    expect: r => {
+      const input = (r as any).input;
+      const s = (r as any).summary;
+      if (!input || !s) return 'missing input or summary';
+      if (input.rent !== 2000) return `expected comp-derived rent 2000, got ${input.rent}`;
+      if (s.marketRent?.compsUsed !== 3) return `expected 3 comps used, got ${s.marketRent?.compsUsed}`;
+      return null;
+    }
+  },
 
   // ── analyzeListing ────────────────────────────────────────────────────────
   {
@@ -80,6 +109,51 @@ const cases: Case[] = [
       const parsed = (r as any).parsedListing;
       if (!parsed) return 'missing parsedListing';
       if (!parsed.price) return 'parser did not extract price';
+      return null;
+    }
+  },
+  {
+    prompt: 'parse listing text should not treat estimated payment as rent',
+    tool: 'parseListing',
+    args: { listingText: 'Condo for sale. Price $289,000. Est. payment $2,100/mo. $432/mo HOA Dues.' },
+    expect: r => {
+      if ((r as any).rent != null) return `expected no rent, got ${(r as any).rent}`;
+      if ((r as any).hoa !== 432) return `expected HOA 432, got ${(r as any).hoa}`;
+      return null;
+    }
+  },
+  {
+    prompt: 'caller-provided listing fields should override parser guesses',
+    tool: 'analyzeListing',
+    args: { listingText: 'Condo for sale. Price $289,000. Estimated rent $1,200/mo. $300/mo HOA Dues. Property taxes $3,400/year.', rent: 2168, hoa: 432 },
+    expect: r => {
+      const input = (r as any).input;
+      if (!input) return 'missing input';
+      if (input.rent !== 2168) return `expected override rent 2168, got ${input.rent}`;
+      if (input.hoa !== 432) return `expected override HOA 432, got ${input.hoa}`;
+      return null;
+    }
+  },
+  {
+    prompt: 'null listing overrides should not erase parsed fields',
+    tool: 'analyzeListing',
+    args: { listingText: 'Condo for sale. Price $289,000. Estimated rent $1,200/mo. $300/mo HOA Dues. Property taxes $3,400/year.', rent: null, hoa: null },
+    expect: r => {
+      const input = (r as any).input;
+      if (!input) return 'missing input';
+      if (input.rent !== 1200) return `expected parsed rent 1200, got ${input.rent}`;
+      if (input.hoa !== 300) return `expected parsed HOA 300, got ${input.hoa}`;
+      return null;
+    }
+  },
+  {
+    prompt: 'parse condo listing text with $432/mo HOA dues',
+    tool: 'parseListing',
+    args: { listingText: 'Condo for sale. Price $289,000. 3 beds, 2 baths, 1,500 square feet. Est. rent $2,168/mo. $432/mo HOA Dues. Property taxes $3,400/year.' },
+    expect: r => {
+      if ((r as any).hoa !== 432) return `expected HOA 432, got ${(r as any).hoa}`;
+      if ((r as any).rent !== 2168) return `expected rent 2168, got ${(r as any).rent}`;
+      if ((r as any).price !== 289000) return `expected price 289000, got ${(r as any).price}`;
       return null;
     }
   },
