@@ -160,16 +160,18 @@ oauthRouter.post('/token', (req, res) => {
   const clientId = req.body.client_id;
   const clientSecret = req.body.client_secret;
   const client = oauthClients.get(clientId);
-  if (!client) return res.status(400).json({ error: 'invalid_client' });
+  console.log(`[token] grant=${grantType} client=${clientId} client_found=${!!client}`);
+  if (!client) return res.status(400).json({ error: 'invalid_client', error_description: `Unknown client: ${clientId}` });
   if (client.token_endpoint_auth_method !== 'none' && client.client_secret !== clientSecret) {
-    return res.status(400).json({ error: 'invalid_client' });
+    return res.status(400).json({ error: 'invalid_client', error_description: 'Bad client secret' });
   }
   const ACCESS_TTL = 30 * 24 * 3600 * 1000;
   if (grantType === 'authorization_code') {
     const record = oauthCodes.get(req.body.code);
-    if (!record || record.expiresAt < Date.now()) return res.status(400).json({ error: 'invalid_grant' });
-    if (record.client_id !== clientId || record.redirect_uri !== req.body.redirect_uri) return res.status(400).json({ error: 'invalid_grant' });
-    if (!req.body.code_verifier || sha256base64url(req.body.code_verifier) !== record.code_challenge) return res.status(400).json({ error: 'invalid_grant' });
+    console.log(`[token] code_found=${!!record} redirect_uri_match=${record?.redirect_uri === req.body.redirect_uri}`);
+    if (!record || record.expiresAt < Date.now()) return res.status(400).json({ error: 'invalid_grant', error_description: 'Code not found or expired' });
+    if (record.client_id !== clientId || record.redirect_uri !== req.body.redirect_uri) return res.status(400).json({ error: 'invalid_grant', error_description: `client_id or redirect_uri mismatch` });
+    if (!req.body.code_verifier || sha256base64url(req.body.code_verifier) !== record.code_challenge) return res.status(400).json({ error: 'invalid_grant', error_description: 'PKCE verification failed' });
     oauthCodes.delete(req.body.code);
     const accessToken = randomToken();
     const refreshToken = randomToken();
