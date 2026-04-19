@@ -87,7 +87,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 const APP_NAME = 'deal-analyzer-mcp';
-const APP_VERSION = '1.8.3';
+const APP_VERSION = '1.9.0';
 const DEFAULT_RATE = Number(process.env.DEFAULT_RATE || 0.065);
 const DEFAULT_TERM_YEARS = Number(process.env.DEFAULT_TERM_YEARS || 30);
 const DEFAULT_VACANCY_RATE = Number(process.env.DEFAULT_VACANCY_RATE || 0.05);
