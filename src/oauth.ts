@@ -1,0 +1,211 @@
+import express, { type Request } from 'express';
+import passport from 'passport';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import { v4 as uuidv4 } from 'uuid';
+import { db, oauthClients, oauthCodes, oauthAccessTokens, oauthRefreshTokens, getUserById, createUser } from './db';
+import { baseUrl, queryParam, randomToken, sha256base64url, configuredSecret, PUBLIC_BASE_URL } from './utils';
+import type { AppUser } from './types';
+
+// ── Auth helpers ──────────────────────────────────────────────────────────────
+
+export function currentUser(req: Request): AppUser | null {
+  return req.user || null;
+}
+
+export function bearerUser(req: Request): AppUser | null {
+  const auth = typeof req.headers.authorization === 'string' ? req.headers.authorization : '';
+  if (!auth.startsWith('Bearer ')) return null;
+  const token = auth.slice('Bearer '.length);
+  const tokenRow = oauthAccessTokens.get(token);
+  if (!tokenRow || (tokenRow.expiresAt ?? 0) < Date.now()) return null;
+  return getUserById(tokenRow.userId);
+}
+
+export function sessionOrBearerUser(req: Request): AppUser | null {
+  return currentUser(req) || bearerUser(req);
+}
+
+// ── Passport setup ────────────────────────────────────────────────────────────
+
+const googleAuthConfigured = configuredSecret(process.env.GOOGLE_CLIENT_ID) && configuredSecret(process.env.GOOGLE_CLIENT_SECRET);
+const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || (PUBLIC_BASE_URL ? `${PUBLIC_BASE_URL}/auth/google/callback` : '/auth/google/callback');
+
+if (googleAuthConfigured) {
+  passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID || '',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    callbackURL: GOOGLE_CALLBACK_URL
+  }, (accessToken, refreshToken, profile, done) => {
+    try {
+      const email = profile.emails?.[0]?.value ?? null;
+      const displayName = profile.displayName || email || 'User';
+      const user = createUser(profile.id, email, displayName);
+      return done(null, user);
+    } catch (error) {
+      return done(error);
+    }
+  }));
+}
+
+passport.serializeUser((user, done) => done(null, user.id));
+passport.deserializeUser((id, done) => {
+  try {
+    done(null, getUserById(String(id)));
+  } catch (error) {
+    done(error);
+  }
+});
+
+export { googleAuthConfigured };
+
+// ── Default OAuth client ──────────────────────────────────────────────────────
+
+export function ensureDefaultClient(port: number) {
+  const clientId = process.env.DEFAULT_OAUTH_CLIENT_ID || 'chatgpt-dev-client';
+  if (!oauthClients.has(clientId)) {
+    const fallbackRedirectUri = PUBLIC_BASE_URL ? `${PUBLIC_BASE_URL}/dashboard` : `http://localhost:${port}/dashboard`;
+    oauthClients.set(clientId, {
+      client_id: clientId,
+      client_secret: process.env.DEFAULT_OAUTH_CLIENT_SECRET || '',
+      redirect_uris: (process.env.DEFAULT_OAUTH_REDIRECT_URIS || fallbackRedirectUri).split(',').map(v => v.trim()).filter(Boolean),
+      grant_types: ['authorization_code', 'refresh_token'],
+      token_endpoint_auth_method: 'none',
+      scope: 'openid profile email deals.read deals.write'
+    });
+  }
+}
+
+// ── OAuth router ──────────────────────────────────────────────────────────────
+
+export const oauthRouter = express.Router();
+
+const authServerMeta = (req: Request) => {
+  const origin = baseUrl(req);
+  return {
+    issuer: origin,
+    authorization_endpoint: `${origin}/authorize`,
+    token_endpoint: `${origin}/token`,
+    registration_endpoint: `${origin}/register`,
+    response_types_supported: ['code'],
+    grant_types_supported: ['authorization_code', 'refresh_token'],
+    token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
+    code_challenge_methods_supported: ['S256'],
+    scopes_supported: ['openid', 'profile', 'email', 'deals.read', 'deals.write']
+  };
+};
+
+const protectedResourceMeta = (req: Request) => {
+  const origin = baseUrl(req);
+  return {
+    resource: `${origin}/mcp`,
+    authorization_servers: [origin],
+    bearer_methods_supported: ['header', 'query'],
+    scopes_supported: ['deals.read', 'deals.write']
+  };
+};
+
+oauthRouter.get('/.well-known/oauth-authorization-server', (req, res) => res.json(authServerMeta(req)));
+oauthRouter.get('/.well-known/oauth-protected-resource', (req, res) => res.json(protectedResourceMeta(req)));
+oauthRouter.get('/mcp/.well-known/oauth-protected-resource', (req, res) => res.json(protectedResourceMeta(req)));
+oauthRouter.get('/mcp/.well-known/oauth-authorization-server', (req, res) => res.json(authServerMeta(req)));
+
+oauthRouter.post('/register', (req, res) => {
+  const redirectUris = Array.isArray(req.body.redirect_uris) ? req.body.redirect_uris : [];
+  const tokenMethod = req.body.token_endpoint_auth_method || 'none';
+  const clientId = `client_${uuidv4()}`;
+  const client = {
+    client_id: clientId,
+    client_secret: tokenMethod === 'none' ? '' : randomToken(),
+    redirect_uris: redirectUris,
+    grant_types: ['authorization_code', 'refresh_token'],
+    token_endpoint_auth_method: tokenMethod,
+    scope: req.body.scope || 'openid profile email deals.read deals.write',
+    client_name: req.body.client_name || 'Dynamic client'
+  };
+  oauthClients.set(clientId, client);
+  res.status(201).json(client);
+});
+
+oauthRouter.get('/authorize', (req, res) => {
+  const response_type = queryParam(req.query.response_type);
+  const client_id = queryParam(req.query.client_id);
+  const redirect_uri = queryParam(req.query.redirect_uri);
+  const state = queryParam(req.query.state);
+  const scope = queryParam(req.query.scope);
+  const code_challenge = queryParam(req.query.code_challenge);
+  const code_challenge_method = queryParam(req.query.code_challenge_method);
+  const client = oauthClients.get(client_id);
+  if (!client) return res.status(400).send('Unknown client_id');
+  if (response_type !== 'code') return res.status(400).send('Unsupported response_type');
+  if (!redirect_uri || !client.redirect_uris.includes(redirect_uri)) return res.status(400).send('Invalid redirect_uri');
+  if (!code_challenge || code_challenge_method !== 'S256') return res.status(400).send('PKCE S256 required');
+  if (!req.user) {
+    req.session.returnTo = req.originalUrl;
+    return res.redirect('/auth/google');
+  }
+  const code = randomToken();
+  oauthCodes.set(code, {
+    client_id, redirect_uri, userId: req.user.id,
+    scope: scope || 'openid profile email deals.read deals.write',
+    code_challenge, expiresAt: Date.now() + 10 * 60 * 1000
+  });
+  const redirect = new URL(redirect_uri);
+  redirect.searchParams.set('code', code);
+  if (state) redirect.searchParams.set('state', state);
+  res.redirect(redirect.toString());
+});
+
+oauthRouter.post('/token', (req, res) => {
+  const grantType = req.body.grant_type;
+  const clientId = req.body.client_id;
+  const clientSecret = req.body.client_secret;
+  const client = oauthClients.get(clientId);
+  if (!client) return res.status(400).json({ error: 'invalid_client' });
+  if (client.token_endpoint_auth_method !== 'none' && client.client_secret !== clientSecret) {
+    return res.status(400).json({ error: 'invalid_client' });
+  }
+  const ACCESS_TTL = 30 * 24 * 3600 * 1000;
+  if (grantType === 'authorization_code') {
+    const record = oauthCodes.get(req.body.code);
+    if (!record || record.expiresAt < Date.now()) return res.status(400).json({ error: 'invalid_grant' });
+    if (record.client_id !== clientId || record.redirect_uri !== req.body.redirect_uri) return res.status(400).json({ error: 'invalid_grant' });
+    if (!req.body.code_verifier || sha256base64url(req.body.code_verifier) !== record.code_challenge) return res.status(400).json({ error: 'invalid_grant' });
+    oauthCodes.delete(req.body.code);
+    const accessToken = randomToken();
+    const refreshToken = randomToken();
+    oauthAccessTokens.set(accessToken, { userId: record.userId, client_id: clientId, scope: record.scope, expiresAt: Date.now() + ACCESS_TTL });
+    oauthRefreshTokens.set(refreshToken, { userId: record.userId, client_id: clientId, scope: record.scope });
+    return res.json({ access_token: accessToken, token_type: 'Bearer', expires_in: ACCESS_TTL / 1000, refresh_token: refreshToken, scope: record.scope });
+  }
+  if (grantType === 'refresh_token') {
+    const record = oauthRefreshTokens.get(req.body.refresh_token);
+    if (!record || record.client_id !== clientId) return res.status(400).json({ error: 'invalid_grant' });
+    const accessToken = randomToken();
+    oauthAccessTokens.set(accessToken, { userId: record.userId, client_id: clientId, scope: record.scope, expiresAt: Date.now() + ACCESS_TTL });
+    return res.json({ access_token: accessToken, token_type: 'Bearer', expires_in: ACCESS_TTL / 1000, refresh_token: req.body.refresh_token, scope: record.scope });
+  }
+  return res.status(400).json({ error: 'unsupported_grant_type' });
+});
+
+// Auth routes (Google OAuth for web)
+oauthRouter.get('/auth/google', (req, res, next) => {
+  if (!googleAuthConfigured) return res.status(503).send('Google OAuth is not configured');
+  return passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+});
+oauthRouter.get('/auth/google/callback', (req, res, next) => {
+  if (!googleAuthConfigured) return res.status(503).send('Google OAuth is not configured');
+  return passport.authenticate('google', { failureRedirect: '/', keepSessionInfo: true })(req, res, next);
+}, (req, res) => {
+  const returnTo = req.session.returnTo || '/dashboard';
+  delete req.session.returnTo;
+  res.redirect(returnTo);
+});
+oauthRouter.get('/logout', (req, res) => {
+  req.logout(() => req.session.destroy(() => res.redirect('/')));
+});
+oauthRouter.get('/whoami', (req, res) => {
+  res.json(currentUser(req) || bearerUser(req) || null);
+});
+
+// Inline user type access for debug
+export { db };

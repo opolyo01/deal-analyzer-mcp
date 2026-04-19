@@ -1,52 +1,127 @@
 import path from 'node:path';
 import Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
+import type { AppUser, DealColumnRow, DealRow, JsonRecord, OAuthClient, OAuthCodeRecord, OAuthTokenRecord } from './types';
 
-type JsonRecord = Record<string, any>;
+const projectRoot = path.resolve(__dirname, '..');
+export const dbPath = process.env.DATABASE_PATH ?? path.join(projectRoot, 'deals.db');
+export const db = new Database(dbPath);
 
-interface DealRow {
-  id: string;
-  label: string;
-  input: string;
-  analysis: string;
-  createdAt: string;
+db.prepare(`CREATE TABLE IF NOT EXISTS deals (
+  id TEXT PRIMARY KEY,
+  userId TEXT,
+  label TEXT,
+  input TEXT NOT NULL,
+  analysis TEXT NOT NULL,
+  createdAt TEXT NOT NULL
+)`).run();
+
+db.prepare(`CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  googleId TEXT UNIQUE,
+  email TEXT UNIQUE,
+  displayName TEXT
+)`).run();
+
+const dealColumns = db.prepare('PRAGMA table_info(deals)').all() as DealColumnRow[];
+if (!dealColumns.find(c => c.name === 'userId')) {
+  db.prepare('ALTER TABLE deals ADD COLUMN userId TEXT').run();
 }
 
-const dbPath = process.env.DATABASE_PATH ?? path.join(path.resolve(__dirname, '..'), 'deals.db');
-const db = new Database(dbPath);
+db.prepare(`CREATE TABLE IF NOT EXISTS oauth_clients (
+  client_id TEXT PRIMARY KEY,
+  data TEXT NOT NULL
+)`).run();
 
-db.prepare(`
-CREATE TABLE IF NOT EXISTS deals (
-  id TEXT PRIMARY KEY,
-  label TEXT,
-  input TEXT,
-  analysis TEXT,
-  createdAt TEXT
-)
-`).run();
+db.prepare(`CREATE TABLE IF NOT EXISTS oauth_tokens (
+  token TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  data TEXT NOT NULL,
+  expires_at INTEGER
+)`).run();
 
-export function saveDeal(input: JsonRecord, analysis: JsonRecord) {
+db.prepare('DELETE FROM oauth_tokens WHERE expires_at IS NOT NULL AND expires_at < ?').run(Date.now());
+
+// OAuth client store
+function dbGetClient(clientId: string): OAuthClient | undefined {
+  const row = db.prepare('SELECT data FROM oauth_clients WHERE client_id = ?').get(clientId) as { data: string } | undefined;
+  return row ? JSON.parse(row.data) : undefined;
+}
+function dbSetClient(clientId: string, client: OAuthClient) {
+  db.prepare('INSERT OR REPLACE INTO oauth_clients (client_id, data) VALUES (?, ?)').run(clientId, JSON.stringify(client));
+}
+
+// OAuth token store
+function dbGetToken(token: string, type: string): OAuthCodeRecord | OAuthTokenRecord | undefined {
+  const row = db.prepare('SELECT data, expires_at FROM oauth_tokens WHERE token = ? AND type = ?').get(token, type) as { data: string; expires_at: number | null } | undefined;
+  if (!row) return undefined;
+  if (row.expires_at && row.expires_at < Date.now()) { db.prepare('DELETE FROM oauth_tokens WHERE token = ?').run(token); return undefined; }
+  return JSON.parse(row.data);
+}
+function dbSetToken(token: string, type: string, data: OAuthCodeRecord | OAuthTokenRecord, expiresAt?: number) {
+  db.prepare('INSERT OR REPLACE INTO oauth_tokens (token, type, data, expires_at) VALUES (?, ?, ?, ?)').run(token, type, JSON.stringify(data), expiresAt ?? null);
+}
+function dbDeleteToken(token: string) {
+  db.prepare('DELETE FROM oauth_tokens WHERE token = ?').run(token);
+}
+
+export const oauthClients = {
+  get: (id: string) => dbGetClient(id),
+  set: (id: string, c: OAuthClient) => dbSetClient(id, c),
+  has: (id: string) => !!dbGetClient(id),
+};
+export const oauthCodes = {
+  get: (token: string) => dbGetToken(token, 'code') as OAuthCodeRecord | undefined,
+  set: (token: string, data: OAuthCodeRecord) => dbSetToken(token, 'code', data, data.expiresAt),
+  delete: (token: string) => dbDeleteToken(token),
+};
+export const oauthAccessTokens = {
+  get: (token: string) => dbGetToken(token, 'access') as OAuthTokenRecord | undefined,
+  set: (token: string, data: OAuthTokenRecord) => dbSetToken(token, 'access', data, data.expiresAt),
+};
+export const oauthRefreshTokens = {
+  get: (token: string) => dbGetToken(token, 'refresh') as OAuthTokenRecord | undefined,
+  set: (token: string, data: OAuthTokenRecord) => dbSetToken(token, 'refresh', data),
+};
+
+// User helpers
+export function getUserById(id: string): AppUser | null {
+  return (db.prepare('SELECT * FROM users WHERE id = ?').get(id) as AppUser | undefined) || null;
+}
+
+export function createUser(googleId: string, email: string | null, displayName: string): AppUser {
+  let user = db.prepare('SELECT * FROM users WHERE googleId = ?').get(googleId) as AppUser | undefined;
+  if (!user) {
+    user = { id: uuidv4(), googleId, email, displayName };
+    db.prepare('INSERT INTO users (id, googleId, email, displayName) VALUES (?, ?, ?, ?)').run(user.id, user.googleId, user.email, user.displayName);
+  } else {
+    db.prepare('UPDATE users SET email = ?, displayName = ? WHERE id = ?').run(email, displayName, user.id);
+    user.email = email;
+    user.displayName = displayName;
+  }
+  return user;
+}
+
+// Deal helpers
+export function saveDealRecord(input: JsonRecord, analysis: JsonRecord, userId: string | null = null) {
   const id = uuidv4();
-
-  db.prepare(`
-    INSERT INTO deals (id, label, input, analysis, createdAt)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(
-    id,
-    input.label || 'Deal',
-    JSON.stringify(input),
-    JSON.stringify(analysis),
-    new Date().toISOString()
+  db.prepare('INSERT INTO deals (id, userId, label, input, analysis, createdAt) VALUES (?, ?, ?, ?, ?, ?)').run(
+    id, userId, input.label || input.address || 'Deal',
+    JSON.stringify(input), JSON.stringify(analysis), new Date().toISOString()
   );
-
   return id;
 }
 
-export function getDeals() {
-  return (db.prepare('SELECT * FROM deals ORDER BY createdAt DESC').all() as DealRow[])
-    .map(r => ({
-      ...r,
-      input: JSON.parse(r.input),
-      analysis: JSON.parse(r.analysis)
-    }));
+export function getSavedDeals(userId: string | null = null) {
+  const rows = (userId
+    ? db.prepare('SELECT * FROM deals WHERE userId = ? ORDER BY createdAt DESC').all(userId)
+    : db.prepare('SELECT * FROM deals WHERE userId IS NULL ORDER BY createdAt DESC').all()) as DealRow[];
+
+  return rows.flatMap(row => {
+    try {
+      return [{ id: row.id, userId: row.userId, label: row.label, createdAt: row.createdAt, input: JSON.parse(row.input), analysis: JSON.parse(row.analysis) }];
+    } catch {
+      return [{ id: row.id, userId: row.userId, label: row.label, createdAt: row.createdAt, input: {}, analysis: { _parseError: true } }];
+    }
+  });
 }
