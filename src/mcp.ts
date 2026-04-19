@@ -127,7 +127,20 @@ async function handleMcpRequest(req: Request, res: express.Response) {
                 result = jsonRpc(id, { content: [{ type: 'text', text: 'Not authenticated — reconnect Deal Analyzer in ChatGPT settings to load saved deals.' }], structuredContent: { deals: [], authenticated: false } });
               } else {
                 const deals = getSavedDeals(user.id);
-                result = jsonRpc(id, { content: [{ type: 'text', text: `Found ${deals.length} deals` }], structuredContent: { deals, count: deals.length } });
+                const dealsText = deals.length === 0
+                  ? 'No saved deals found.'
+                  : deals.map((d, i) => {
+                      const a = d.analysis?.summary;
+                      const lines = [`${i + 1}. ${d.input?.address || d.label || d.id}`];
+                      if (a) {
+                        lines.push(`   Score: ${a.score}/10`);
+                        lines.push(`   Cash flow: ${asCurrency(a.monthlyCashFlow)}/mo after debt | ${asCurrency(a.monthlyCashFlowBeforePrincipal)}/mo before principal`);
+                        lines.push(`   Cap rate: ${a.capRate?.toFixed(2)}% | CoC return: ${a.cashOnCashReturn?.toFixed(2)}%`);
+                        lines.push(`   Price: ${asCurrency(d.input?.price)} | Down: ${asCurrency(d.input?.downPayment)} | Rent: ${asCurrency(d.input?.rent)}/mo`);
+                      }
+                      return lines.join('\n');
+                    }).join('\n\n');
+                result = jsonRpc(id, { content: [{ type: 'text', text: `Found ${deals.length} saved deal(s):\n\n${dealsText}` }], structuredContent: { deals, count: deals.length } });
               }
             } catch (err) {
               result = jsonRpc(id, { content: [{ type: 'text', text: `getDeals error: ${errorMessage(err, 'unknown')} | user=${user?.id ?? 'null'} | dbPath=${dbPath}` }], structuredContent: { deals: [], error: errorMessage(err, 'unknown') } });
