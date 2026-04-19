@@ -1077,17 +1077,19 @@ app.post('/token', (req, res) => {
     oauthCodes.delete(code);
     const accessToken = randomToken();
     const refreshToken = randomToken();
-    oauthAccessTokens.set(accessToken, { userId: record.userId, client_id: clientId, scope: record.scope, expiresAt: Date.now() + 3600 * 1000 });
+    const ACCESS_TTL = 30 * 24 * 3600 * 1000; // 30 days
+    oauthAccessTokens.set(accessToken, { userId: record.userId, client_id: clientId, scope: record.scope, expiresAt: Date.now() + ACCESS_TTL });
     oauthRefreshTokens.set(refreshToken, { userId: record.userId, client_id: clientId, scope: record.scope });
-    return res.json({ access_token: accessToken, token_type: 'Bearer', expires_in: 3600, refresh_token: refreshToken, scope: record.scope });
+    return res.json({ access_token: accessToken, token_type: 'Bearer', expires_in: ACCESS_TTL / 1000, refresh_token: refreshToken, scope: record.scope });
   }
   if (grantType === 'refresh_token') {
     const refreshToken = req.body.refresh_token;
     const record = oauthRefreshTokens.get(refreshToken);
     if (!record || record.client_id !== clientId) return res.status(400).json({ error: 'invalid_grant' });
     const accessToken = randomToken();
-    oauthAccessTokens.set(accessToken, { userId: record.userId, client_id: clientId, scope: record.scope, expiresAt: Date.now() + 3600 * 1000 });
-    return res.json({ access_token: accessToken, token_type: 'Bearer', expires_in: 3600, refresh_token: refreshToken, scope: record.scope });
+    const ACCESS_TTL = 30 * 24 * 3600 * 1000;
+    oauthAccessTokens.set(accessToken, { userId: record.userId, client_id: clientId, scope: record.scope, expiresAt: Date.now() + ACCESS_TTL });
+    return res.json({ access_token: accessToken, token_type: 'Bearer', expires_in: ACCESS_TTL / 1000, refresh_token: refreshToken, scope: record.scope });
   }
   return res.status(400).json({ error: 'unsupported_grant_type' });
 });
