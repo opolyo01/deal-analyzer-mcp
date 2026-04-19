@@ -513,8 +513,8 @@ function walkForNumbers(node: unknown, out: JsonRecord, depth = 0) {
     if (typeof value === 'number' && value > 0) {
       if (out.price == null && /listprice|listingprice|askingprice|saleprice|sellingprice|^price$|unformattedprice/.test(k)) out.price = value;
       if (out.rent == null && /rent|rentalestimate|zestimate.*rent/.test(k)) out.rent = value;
-      if (out.taxes == null && /taxannual|annualtax|propertytax|taxamount|taxesamount|realestatetax/.test(k)) out.taxes = value;
-      if (out.hoa == null && /hoafee|hoamonthly|hoamonth|hoaamt|hoadues|hoadue|^hoa$/.test(k)) out.hoa = value;
+      if (out.taxes == null && /taxannual|annualtax|propertytax|taxamount|taxesamount|realestatetax|annualtaxamount|taxesdueannual/.test(k)) out.taxes = value;
+      if (out.hoa == null && /hoafee|hoamonthly|hoamonth|hoaamt|hoadues|hoadue|associationfee|condofee|^hoa$/.test(k)) out.hoa = value;
       if (out.beds == null && /^bed|bedroom/.test(k)) out.beds = value;
       if (out.baths == null && /^bath|bathroom/.test(k)) out.baths = value;
       if (out.sqft == null && /sqft|squarefeet|floorarea|livingarea|finishedsqft/.test(k)) out.sqft = value;
@@ -616,6 +616,9 @@ function extractStructuredDataFromHtml(html: string, sourceUrl = ''): JsonRecord
   const parserNotes: string[] = [];
   if (sourceUrl.includes('redfin')) parserNotes.push('Applied Redfin-friendly heuristics');
   if (sourceUrl.includes('zillow')) parserNotes.push('Applied Zillow-friendly heuristics');
+  // Extract snippets near financial keywords for debugging
+  const hoaSnippet = bodyText.match(/.{0,60}hoa.{0,60}/i)?.[0] || null;
+  const taxSnippet = bodyText.match(/.{0,60}tax.{0,60}/i)?.[0] || null;
   return {
     sourceUrl,
     address: result.address || fallback.address || '',
@@ -630,7 +633,7 @@ function extractStructuredDataFromHtml(html: string, sourceUrl = ''): JsonRecord
     sqft: result.sqft ?? fallback.sqft ?? null,
     photoUrl: result.photoUrl || null,
     parserNotes,
-    extracted: { bodyTextPreview: bodyText.slice(0, 500) }
+    extracted: { bodyTextPreview: bodyText.slice(0, 3000), hoaSnippet, taxSnippet }
   };
 }
 async function parseListing(input: JsonRecord = {}) {
