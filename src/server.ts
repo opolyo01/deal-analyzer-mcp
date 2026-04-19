@@ -885,6 +885,8 @@ app.delete('/deals/:id', (req, res) => {
     res.json({ deleted: req.params.id });
   } catch (error) { res.status(500).json({ error: errorMessage(error, 'Failed to delete deal.') }); }
 });
+app.get('/privacy', (_req, res) => res.sendFile(path.join(projectRoot, 'public', 'privacy.html')));
+app.get('/terms', (_req, res) => res.sendFile(path.join(projectRoot, 'public', 'terms.html')));
 app.get('/dashboard', (_req, res) => {
   if (fs.existsSync(dashboardPath)) return res.sendFile(dashboardPath);
   return res.type('html').send('<html><body><h2>Dashboard missing</h2><p>Create dashboard.html to render saved deals.</p></body></html>');
