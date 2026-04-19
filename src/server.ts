@@ -111,7 +111,8 @@ const AGENT_CONFIG = {
   licenseNumber: process.env.AGENT_LICENSE || '',
 };
 
-const db = new Database(path.join(projectRoot, 'deals.db'));
+const dbPath = process.env.DATABASE_PATH ?? path.join(projectRoot, 'deals.db');
+const db = new Database(dbPath);
 db.prepare(`
 CREATE TABLE IF NOT EXISTS deals (
   id TEXT PRIMARY KEY,
