@@ -826,13 +826,23 @@ app.post('/token', (req, res) => {
 app.get('/', (_req, res) => res.redirect('/dashboard'));
 app.get('/health', (req, res) => res.json({ ok: true, app: APP_NAME, version: APP_VERSION }));
 app.get('/debug/auth', (req, res) => {
+  const auth = typeof req.headers.authorization === 'string' ? req.headers.authorization : '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+  const tokenRow = token ? (() => { try { return db.prepare('SELECT * FROM oauth_tokens WHERE token = ? AND type = ?').get(token, 'access') as any; } catch { return 'db-error'; } })() : null;
+  const userCount = (() => { try { return (db.prepare('SELECT COUNT(*) as c FROM users').get() as any).c; } catch { return 'db-error'; } })();
+  const tokenCount = (() => { try { return (db.prepare('SELECT COUNT(*) as c FROM oauth_tokens').get() as any).c; } catch { return 'db-error'; } })();
   res.json({
     version: APP_VERSION,
+    dbPath,
     googleAuthConfigured,
     publicBaseUrl: PUBLIC_BASE_URL || null,
     isLocalOrigin,
     anonymousModeEnabled: ALLOW_ANONYMOUS_MODE,
-    signedIn: Boolean(sessionOrBearerUser(req))
+    signedIn: Boolean(sessionOrBearerUser(req)),
+    userCount,
+    tokenCount,
+    tokenFound: token ? Boolean(tokenRow) : 'no-bearer-header',
+    tokenExpired: tokenRow && typeof tokenRow === 'object' ? (tokenRow.expires_at && tokenRow.expires_at < Date.now() ? true : false) : null,
   });
 });
 app.get('/.well-known/app.json', (req, res) => {
