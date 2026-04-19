@@ -891,6 +891,9 @@ app.get('/dashboard', (_req, res) => {
 });
 app.post('/mcp', async (req, res) => {
   const { id, method, params } = req.body || {};
+  const authHeader = req.headers.authorization || '(none)';
+  const tokenPreview = authHeader.startsWith('Bearer ') ? authHeader.slice(7, 16) + '…' : authHeader;
+  console.log(`[mcp] method=${method} tool=${params?.name ?? '-'} auth=${tokenPreview}`);
   try {
     if (method === 'initialize') return res.json(jsonRpc(id, { protocolVersion: '2024-11-05', serverInfo: { name: APP_NAME, version: APP_VERSION }, capabilities: { tools: {} } }));
     if (method === 'tools/list') return res.json(jsonRpc(id, { tools }));
