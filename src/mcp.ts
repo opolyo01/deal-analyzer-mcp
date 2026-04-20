@@ -1,7 +1,7 @@
 import express, { type Request } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { calculateDeal, parseListing, compareDeals, mergeListingWithOverrides, asCurrency } from './deal';
-import { getSavedDeals, saveDealRecord, dbPath } from './db';
+import { getSavedDeals, saveDealRecord, dbPath, isProUser, countDeals } from './db';
 import { sessionOrBearerUser } from './oauth';
 import { errorMessage, APP_NAME, APP_VERSION, ALLOW_ANONYMOUS_MODE, baseUrl } from './utils';
 import type { JsonRecord } from './types';
@@ -147,7 +147,9 @@ async function handleMcpRequest(req: Request, res: express.Response) {
             }
           } else {
             if (!user && !ALLOW_ANONYMOUS_MODE) {
-              result = jsonRpc(id, { content: [{ type: 'text', text: 'Authentication required to save deals. Please reconnect Deal Analyzer in ChatGPT settings.' }], structuredContent: { error: 'unauthenticated' } });
+              result = jsonRpc(id, { content: [{ type: 'text', text: 'Authentication required to save deals. Please reconnect Deal Analyzer in Claude.ai or ChatGPT settings.' }], structuredContent: { error: 'unauthenticated' } });
+            } else if (user && !isProUser(user.id) && countDeals(user.id) >= 3) {
+              result = jsonRpc(id, { content: [{ type: 'text', text: 'Free plan is limited to 3 saved deals. Upgrade to Pro at deal-analyzer-mcp-production.up.railway.app/billing/checkout to save unlimited deals.' }], structuredContent: { error: 'upgrade_required', upgradeUrl: '/billing/checkout' } });
             } else {
               const analysis = calculateDeal(args);
               const savedId = saveDealRecord(args, analysis, user ? user.id : null);

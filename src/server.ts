@@ -4,8 +4,9 @@ import session from 'express-session';
 import passport from 'passport';
 import fs from 'node:fs';
 import path from 'node:path';
-import { db, dbPath, getSavedDeals, saveDealRecord } from './db';
+import { db, dbPath, getSavedDeals, saveDealRecord, isProUser, countDeals } from './db';
 import { calculateDeal, parseListing, compareDeals } from './deal';
+import { billingRouter } from './billing';
 import { oauthRouter, sessionOrBearerUser, googleAuthConfigured, ensureDefaultClient } from './oauth';
 import { mcpRouter } from './mcp';
 import { APP_NAME, APP_VERSION, ALLOW_ANONYMOUS_MODE, errorMessage, baseUrl } from './utils';
@@ -57,6 +58,7 @@ app.use((req, _res, next) => {
 
 app.use(oauthRouter);
 app.use(mcpRouter);
+app.use(billingRouter);
 
 ensureDefaultClient(PORT);
 
@@ -101,10 +103,15 @@ app.post('/parse-listing', async (req, res) => {
 app.post('/compare', (req, res) => {
   try { res.json(compareDeals(req.body?.deals || [])); } catch (error) { res.status(500).json({ error: errorMessage(error, 'Failed to compare deals.') }); }
 });
+const FREE_DEAL_LIMIT = 3;
+
 app.post('/saveDeal', (req, res) => {
   try {
     const user = sessionOrBearerUser(req);
     if (!user && !ALLOW_ANONYMOUS_MODE) return res.status(401).json({ error: 'login_required', loginUrl: '/auth/google' });
+    if (user && !isProUser(user.id) && countDeals(user.id) >= FREE_DEAL_LIMIT) {
+      return res.status(402).json({ error: 'upgrade_required', message: `Free plan is limited to ${FREE_DEAL_LIMIT} saved deals.`, upgradeUrl: '/billing/checkout' });
+    }
     const analysis = calculateDeal(req.body || {});
     const id = saveDealRecord(req.body || {}, analysis, user ? user.id : null);
     res.json({ id, analysis, user: user ? { id: user.id, email: user.email } : null });

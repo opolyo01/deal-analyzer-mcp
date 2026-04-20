@@ -23,6 +23,15 @@ db.prepare(`CREATE TABLE IF NOT EXISTS users (
   displayName TEXT
 )`).run();
 
+// Migrate users table
+const userColumns = db.prepare('PRAGMA table_info(users)').all() as DealColumnRow[];
+if (!userColumns.find(c => c.name === 'stripeCustomerId')) {
+  db.prepare('ALTER TABLE users ADD COLUMN stripeCustomerId TEXT').run();
+}
+if (!userColumns.find(c => c.name === 'subscriptionStatus')) {
+  db.prepare("ALTER TABLE users ADD COLUMN subscriptionStatus TEXT NOT NULL DEFAULT 'free'").run();
+}
+
 const dealColumns = db.prepare('PRAGMA table_info(deals)').all() as DealColumnRow[];
 if (!dealColumns.find(c => c.name === 'userId')) {
   db.prepare('ALTER TABLE deals ADD COLUMN userId TEXT').run();
@@ -110,6 +119,28 @@ export function saveDealRecord(input: JsonRecord, analysis: JsonRecord, userId: 
     JSON.stringify(input), JSON.stringify(analysis), new Date().toISOString()
   );
   return id;
+}
+
+export function isProUser(userId: string): boolean {
+  const row = db.prepare("SELECT subscriptionStatus FROM users WHERE id = ?").get(userId) as { subscriptionStatus: string } | undefined;
+  return row?.subscriptionStatus === 'pro';
+}
+
+export function countDeals(userId: string): number {
+  const row = db.prepare('SELECT COUNT(*) as c FROM deals WHERE userId = ?').get(userId) as { c: number };
+  return row.c;
+}
+
+export function setSubscription(userId: string, status: 'free' | 'pro', stripeCustomerId?: string) {
+  if (stripeCustomerId) {
+    db.prepare('UPDATE users SET subscriptionStatus = ?, stripeCustomerId = ? WHERE id = ?').run(status, stripeCustomerId, userId);
+  } else {
+    db.prepare('UPDATE users SET subscriptionStatus = ? WHERE id = ?').run(status, userId);
+  }
+}
+
+export function getUserByStripeCustomer(stripeCustomerId: string): AppUser | null {
+  return (db.prepare('SELECT * FROM users WHERE stripeCustomerId = ?').get(stripeCustomerId) as AppUser | undefined) || null;
 }
 
 export function getSavedDeals(userId: string | null = null) {
