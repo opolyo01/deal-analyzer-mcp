@@ -2,6 +2,7 @@ import Stripe from 'stripe';
 import express from 'express';
 import { getUserById, getUserByStripeCustomer, setSubscription } from './db';
 import { PUBLIC_BASE_URL, errorMessage } from './utils';
+import { sessionOrBearerUser } from './oauth';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
@@ -16,7 +17,7 @@ export const billingRouter = express.Router();
 // Checkout — redirect user to Stripe hosted page
 billingRouter.get('/billing/checkout', async (req, res) => {
   if (!stripe || !stripeEnabled) return res.status(503).send('Billing not configured');
-  const user = (req as any).user as ReturnType<typeof getUserById> | undefined;
+  const user = sessionOrBearerUser(req);
   if (!user) return res.redirect('/auth/google?next=/billing/checkout');
 
   const origin = PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
@@ -50,7 +51,7 @@ billingRouter.get('/billing/success', async (req, res) => {
 // Customer portal — manage billing
 billingRouter.get('/billing/portal', async (req, res) => {
   if (!stripe || !stripeEnabled) return res.status(503).send('Billing not configured');
-  const user = (req as any).user as ReturnType<typeof getUserById> | undefined;
+  const user = sessionOrBearerUser(req);
   if (!user) return res.redirect('/auth/google');
   const dbUser = getUserById(user.id);
   if (!dbUser?.stripeCustomerId) return res.redirect('/?billing=no-subscription');
