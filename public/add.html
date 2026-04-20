@@ -228,6 +228,7 @@
       try {
         statusEl.textContent = action === 'save' ? 'Analyzing and saving...' : 'Analyzing...';
         const data = action === 'save' ? await saveDeal(payload) : await analyzeDeal(payload);
+        if (!data) return;
         renderResult(action === 'save' ? data.analysis : data, data.id);
         statusEl.textContent = action === 'save' ? 'Deal saved. View it in Saved Deals.' : 'Analysis ready.';
       } catch (error) {

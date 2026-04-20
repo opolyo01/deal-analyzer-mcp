@@ -73,7 +73,7 @@ billingRouter.post('/billing/webhook', express.raw({ type: 'application/json' })
   const sig = req.headers['stripe-signature'] as string;
   let event: ReturnType<typeof stripe.webhooks.constructEventAsync> extends Promise<infer T> ? T : any;
   try {
-    event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
+    event = stripe.webhooks.constructEvent((req as any).rawBody ?? req.body, sig, STRIPE_WEBHOOK_SECRET);
   } catch (err) {
     console.error('[billing] webhook signature failed:', errorMessage(err, 'unknown'));
     return res.status(400).send('Webhook signature invalid');
