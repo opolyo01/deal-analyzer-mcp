@@ -3,40 +3,85 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Deal Analyzer — Rental property underwriting in seconds</title>
-  <meta name="description" content="Paste a Zillow or Redfin link and get instant cash flow, cap rate, and deal score. Works in your browser, Claude.ai, and ChatGPT." />
+  <title>Deal Analyzer — Know if a rental is worth it in 30 seconds</title>
+  <meta name="description" content="Paste a Zillow or Redfin link. Get cash flow, cap rate, and a BUY / HOLD / PASS score instantly. No spreadsheet. Works in your browser, Claude.ai, and ChatGPT." />
   <link rel="icon" href="/icon.png" />
   <link rel="stylesheet" href="/deal-ui.css" />
   <style>
     /* ── Hero ── */
     .hero {
-      padding: 56px 0 40px;
-      max-width: 680px;
-    }
-    .hero h1 { font-size: 2.8rem; line-height: 1.08; margin: 0 0 18px; }
-    .hero h1 em { font-style: normal; color: var(--green); }
-    .hero-sub { font-size: 1.1rem; color: var(--muted); line-height: 1.65; margin: 0 0 28px; }
-    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
-    .hero-actions a { min-width: 160px; text-align: center; }
-
-    /* ── Features ── */
-    .features {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
-      padding: 0 0 44px;
+      grid-template-columns: 1fr minmax(280px, 420px);
+      gap: 40px;
+      align-items: center;
+      padding: 56px 0 48px;
     }
-    .feature-card {
+    .hero h1 { font-size: 2.9rem; line-height: 1.06; margin: 0 0 16px; }
+    .hero h1 em { font-style: normal; color: var(--green); }
+    .hero-sub { font-size: 1.05rem; color: var(--muted); line-height: 1.65; margin: 0 0 28px; max-width: 480px; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .hero-note { font-size: 0.85rem; color: var(--muted); margin-top: 10px; }
+
+    /* ── Result preview card ── */
+    .preview-card {
       background: var(--surface);
       border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 24px;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
     }
-    .feature-icon { font-size: 1.6rem; margin-bottom: 12px; }
-    .feature-title { font-size: 1rem; font-weight: 800; margin-bottom: 6px; }
-    .feature-body { font-size: 0.9rem; color: var(--muted); line-height: 1.55; margin: 0; }
+    .preview-header {
+      background: var(--page);
+      border-bottom: 1px solid var(--line);
+      padding: 14px 18px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .preview-address { font-weight: 700; color: var(--ink); font-size: 0.9rem; }
+    .preview-score {
+      background: var(--soft-green);
+      color: var(--green);
+      border: 1px solid #b8d9c8;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 0.85rem;
+      font-weight: 800;
+    }
+    .preview-rec {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--soft-green);
+      color: var(--green);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-weight: 800;
+      font-size: 0.95rem;
+      margin: 16px 18px 8px;
+    }
+    .preview-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1px;
+      background: var(--line);
+      margin: 0 18px 18px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+    }
+    .preview-metric {
+      background: var(--surface);
+      padding: 12px 14px;
+    }
+    .preview-metric-label { font-size: 0.75rem; color: var(--muted); margin-bottom: 3px; }
+    .preview-metric-value { font-size: 1.25rem; font-weight: 800; }
+    .preview-metric-value.pos { color: var(--green); }
+    .preview-metric-value.neg { color: var(--red); }
 
-    /* ── How it works ── */
+    /* ── Section label ── */
     .section-label {
       font-size: 0.75rem;
       font-weight: 700;
@@ -45,81 +90,78 @@
       color: var(--muted);
       margin-bottom: 12px;
     }
-    .how-steps {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
-      margin-bottom: 48px;
-    }
-    .how-step {
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 24px;
-    }
-    .how-num {
-      width: 30px; height: 30px;
-      border-radius: 50%;
-      background: var(--soft-green);
-      color: var(--green);
-      font-weight: 800;
-      display: grid;
-      place-items: center;
-      font-size: 0.95rem;
-      margin-bottom: 12px;
-    }
-    .how-step-title { font-weight: 800; margin-bottom: 6px; font-size: 0.95rem; }
-    .how-step-body { font-size: 0.88rem; color: var(--muted); line-height: 1.55; margin: 0; }
 
-    /* ── Platforms ── */
-    .platforms {
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 32px;
-      margin-bottom: 48px;
-    }
-    .platforms-grid {
+    /* ── Steps ── */
+    .steps {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 20px;
-      margin-top: 20px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 52px;
     }
-    .platform-item {
+    .step {
       display: flex;
       gap: 14px;
       align-items: flex-start;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--soft-green); color: var(--green);
+      font-weight: 800; font-size: 0.9rem;
+      display: grid; place-items: center; flex-shrink: 0;
+    }
+    .step-title { font-weight: 800; font-size: 0.95rem; margin-bottom: 4px; }
+    .step-body { font-size: 0.88rem; color: var(--muted); line-height: 1.5; margin: 0; }
+
+    /* ── Platforms ── */
+    .platforms { margin-bottom: 52px; }
+    .platform-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 14px;
+    }
+    .platform-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .platform-card-head {
+      display: flex; gap: 10px; align-items: center;
+      margin-bottom: 10px;
     }
     .platform-icon {
-      width: 40px; height: 40px;
-      border-radius: 9px;
-      border: 1px solid var(--line);
-      display: grid;
-      place-items: center;
-      font-size: 1.3rem;
-      flex-shrink: 0;
-      background: var(--page);
+      width: 36px; height: 36px; border-radius: 8px;
+      border: 1px solid var(--line); background: var(--page);
+      display: grid; place-items: center; font-size: 1.2rem; flex-shrink: 0;
     }
-    .platform-name { font-weight: 800; font-size: 0.95rem; margin-bottom: 3px; }
-    .platform-desc { font-size: 0.85rem; color: var(--muted); line-height: 1.5; margin: 0; }
+    .platform-name { font-weight: 800; font-size: 0.95rem; }
     .badge {
-      display: inline-block;
-      font-size: 0.72rem;
-      font-weight: 700;
-      padding: 2px 7px;
-      border-radius: 5px;
-      margin-left: 6px;
-      vertical-align: middle;
+      display: inline-block; font-size: 0.7rem; font-weight: 700;
+      padding: 2px 6px; border-radius: 4px; margin-left: 6px; vertical-align: middle;
     }
     .badge-live { background: var(--soft-green); color: var(--green); border: 1px solid #b8d9c8; }
-    .badge-soon { background: var(--soft-gold); color: var(--gold); border: 1px solid #e8d5a0; }
+    .platform-url {
+      font-size: 0.78rem; color: var(--muted);
+      background: var(--page); border: 1px solid var(--line);
+      border-radius: 5px; padding: 5px 8px;
+      font-family: ui-monospace, monospace;
+      word-break: break-all;
+      margin-top: 8px;
+      display: block;
+    }
+    .platform-desc { font-size: 0.85rem; color: var(--muted); line-height: 1.5; margin: 0; }
 
     /* ── Pricing ── */
     .pricing {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 20px;
-      margin-bottom: 48px;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 52px;
     }
     .price-card {
       background: var(--surface);
@@ -131,28 +173,15 @@
       border-color: var(--green);
       background: var(--soft-green);
     }
-    .price-tier { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 8px; }
+    .price-tier { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 8px; }
     .price-card.featured .price-tier { color: var(--green); }
-    .price-amount { font-size: 2.2rem; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+    .price-amount { font-size: 2.4rem; font-weight: 800; line-height: 1; margin-bottom: 4px; }
     .price-amount span { font-size: 1rem; font-weight: 500; color: var(--muted); }
-    .price-desc { font-size: 0.9rem; color: var(--muted); margin: 8px 0 20px; }
+    .price-desc { font-size: 0.88rem; color: var(--muted); margin: 8px 0 18px; line-height: 1.5; }
     .price-features { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
-    .price-features li { font-size: 0.9rem; display: flex; gap: 8px; align-items: flex-start; }
+    .price-features li { font-size: 0.9rem; display: flex; gap: 8px; align-items: flex-start; line-height: 1.4; }
     .price-features li::before { content: '✓'; color: var(--green); font-weight: 800; flex-shrink: 0; }
     .price-cta { margin-top: 24px; display: block; text-align: center; }
-
-    /* ── CTA band ── */
-    .cta-band {
-      background: var(--soft-green);
-      border: 1px solid #b8d9c8;
-      border-radius: 12px;
-      padding: 40px 32px;
-      text-align: center;
-      margin-bottom: 48px;
-    }
-    .cta-band h2 { margin-bottom: 8px; font-size: 1.5rem; }
-    .cta-band p { color: var(--muted); margin-bottom: 24px; font-size: 1rem; }
-    .cta-band-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
 
     /* ── Footer ── */
     .site-footer {
@@ -170,17 +199,15 @@
     .site-footer a:hover { color: var(--ink); }
     .footer-links { display: flex; gap: 16px; }
 
-    @media (max-width: 860px) {
-      .features, .how-steps, .platforms-grid { grid-template-columns: 1fr; }
-      .pricing { grid-template-columns: 1fr; }
-      .hero h1 { font-size: 2.1rem; }
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 2.2rem; }
+      .steps, .platform-cards, .pricing { grid-template-columns: 1fr; }
     }
     @media (max-width: 620px) {
       .hero { padding-top: 32px; }
       .hero-actions { display: grid; }
-      .hero-actions a { min-width: 0; width: 100%; }
-      .cta-band-actions { display: grid; }
-      .cta-band-actions a { width: 100%; }
+      .hero-actions a { width: 100%; }
     }
   </style>
 </head>
@@ -210,96 +237,111 @@
 
         <!-- Hero -->
         <section class="hero">
-          <h1>Analyze rental deals <em>in seconds.</em></h1>
-          <p class="hero-sub">Paste a Zillow or Redfin link and instantly get cash flow, cap rate, cash-on-cash return, and a BUY / HOLD / PASS score. No spreadsheet. No signup required to start.</p>
-          <div class="hero-actions">
-            <a href="/deal-widget.html" class="button primary">Try it free</a>
-            <a href="/add.html" class="button">Full analysis</a>
+          <div>
+            <h1>Know if a rental is worth it <em>in 30 seconds.</em></h1>
+            <p class="hero-sub">Paste a Zillow or Redfin link — or enter a few numbers — and get cash flow, cap rate, and a BUY / HOLD / PASS score instantly. No spreadsheet. No guessing.</p>
+            <div class="hero-actions">
+              <a href="/deal-widget.html" class="button primary" style="font-size:1rem;padding:13px 24px">Try it free — no signup</a>
+              <a href="#pricing" class="button">See pricing</a>
+            </div>
+            <p class="hero-note">Free forever for quick checks. 3 saves free, then $9/mo.</p>
           </div>
-        </section>
 
-        <!-- Features -->
-        <section class="features" aria-label="Key features">
-          <div class="feature-card">
-            <div class="feature-icon">⚡</div>
-            <div class="feature-title">Instant underwriting</div>
-            <p class="feature-body">Cash flow, cap rate, cash-on-cash return, DSCR, and a 1–10 deal score with BUY / HOLD / PASS. State-aware tax and insurance estimates built in.</p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-icon">🔗</div>
-            <div class="feature-title">Import from Zillow or Redfin</div>
-            <p class="feature-body">Paste a listing URL and price, beds, baths, HOA, and taxes auto-fill. Rent is estimated by market if you don't have it.</p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-icon">📁</div>
-            <div class="feature-title">Save and compare</div>
-            <p class="feature-body">Save deals to your account, rank them by score or cash flow, and compare your best opportunities side by side.</p>
+          <!-- Result preview -->
+          <div class="preview-card">
+            <div class="preview-header">
+              <span class="preview-address">123 Maple St, Austin TX</span>
+              <span class="preview-score">8.2 / 10</span>
+            </div>
+            <div class="preview-rec">✓ BUY</div>
+            <div class="preview-metrics">
+              <div class="preview-metric">
+                <div class="preview-metric-label">Monthly cash flow</div>
+                <div class="preview-metric-value pos">+$412</div>
+              </div>
+              <div class="preview-metric">
+                <div class="preview-metric-label">Cap rate</div>
+                <div class="preview-metric-value">6.4%</div>
+              </div>
+              <div class="preview-metric">
+                <div class="preview-metric-label">Cash-on-cash</div>
+                <div class="preview-metric-value">8.1%</div>
+              </div>
+              <div class="preview-metric">
+                <div class="preview-metric-label">Break-even rent</div>
+                <div class="preview-metric-value">$1,840</div>
+              </div>
+            </div>
           </div>
         </section>
 
         <!-- How it works -->
-        <section style="margin-bottom:48px">
+        <section style="margin-bottom:52px">
           <div class="section-label">How it works</div>
-          <div class="how-steps">
-            <div class="how-step">
-              <div class="how-num">1</div>
-              <div class="how-step-title">Paste a listing or enter numbers</div>
-              <p class="how-step-body">Import directly from Zillow or Redfin, or type in price and rent for a quick pass.</p>
+          <div class="steps">
+            <div class="step">
+              <div class="step-num">1</div>
+              <div>
+                <div class="step-title">Paste a listing URL</div>
+                <p class="step-body">Zillow or Redfin link auto-fills price, taxes, HOA, and beds. Rent estimated if you skip it.</p>
+              </div>
             </div>
-            <div class="how-step">
-              <div class="how-num">2</div>
-              <div class="how-step-title">Get a full investment read</div>
-              <p class="how-step-body">See cash flow, cap rate, CoC return, DSCR, and a BUY / HOLD / PASS recommendation instantly.</p>
+            <div class="step">
+              <div class="step-num">2</div>
+              <div>
+                <div class="step-title">Get the full picture</div>
+                <p class="step-body">Cash flow, cap rate, CoC return, DSCR, break-even rent, and a 1–10 score with BUY / HOLD / PASS.</p>
+              </div>
             </div>
-            <div class="how-step">
-              <div class="how-num">3</div>
-              <div class="how-step-title">Save your best deals</div>
-              <p class="how-step-body">Sign in to save unlimited deals, track your pipeline, and compare properties head-to-head.</p>
+            <div class="step">
+              <div class="step-num">3</div>
+              <div>
+                <div class="step-title">Save and move fast</div>
+                <p class="step-body">Save your best deals, rank them, and compare side-by-side. Works in Claude.ai and ChatGPT too.</p>
+              </div>
             </div>
           </div>
         </section>
 
         <!-- Platforms -->
         <section class="platforms">
-          <div class="section-label">Available everywhere you work</div>
-          <p style="color:var(--muted);font-size:0.95rem;margin:0 0 4px">Use Deal Analyzer in your browser, inside Claude.ai, or inside ChatGPT — your saved deals sync across all three.</p>
-          <div class="platforms-grid">
-            <div class="platform-item">
-              <div class="platform-icon">🌐</div>
-              <div>
+          <div class="section-label">Use it where you already work</div>
+          <div class="platform-cards">
+            <div class="platform-card">
+              <div class="platform-card-head">
+                <div class="platform-icon">🌐</div>
                 <div class="platform-name">Web app <span class="badge badge-live">Live</span></div>
-                <p class="platform-desc">Full-featured dashboard at this URL. No install needed.</p>
               </div>
+              <p class="platform-desc">Full dashboard at this URL — analyze, save, and compare deals. No install.</p>
             </div>
-            <div class="platform-item">
-              <div class="platform-icon">✦</div>
-              <div>
-                <div class="platform-name">Claude.ai MCP <span class="badge badge-live">Live</span></div>
-                <p class="platform-desc">Add Deal Analyzer as an MCP tool in Claude.ai. Paste a Zillow link in chat and get a full analysis instantly.</p>
+            <div class="platform-card">
+              <div class="platform-card-head">
+                <div class="platform-icon">✦</div>
+                <div class="platform-name">Claude.ai <span class="badge badge-live">Live</span></div>
               </div>
+              <p class="platform-desc">Add as an MCP integration in Claude.ai Settings → Integrations. Paste a Zillow link in chat and get a full analysis.</p>
+              <code class="platform-url">deal-analyzer-mcp-production.up.railway.app</code>
             </div>
-            <div class="platform-item">
-              <div class="platform-icon">🤖</div>
-              <div>
-                <div class="platform-name">ChatGPT plugin <span class="badge badge-live">Live</span></div>
-                <p class="platform-desc">Connect via MCP in ChatGPT. Ask "is this a good deal?" and get cash flow and score without leaving the chat.</p>
+            <div class="platform-card">
+              <div class="platform-card-head">
+                <div class="platform-icon">🤖</div>
+                <div class="platform-name">ChatGPT <span class="badge badge-live">Live</span></div>
               </div>
+              <p class="platform-desc">Add as an MCP server in ChatGPT Settings → Connectors. Ask "is this a good deal?" with any listing.</p>
+              <code class="platform-url">deal-analyzer-mcp-production.up.railway.app/mcp</code>
             </div>
-          </div>
-          <div style="margin-top:20px;padding-top:18px;border-top:1px solid var(--line);font-size:0.85rem;color:var(--muted)">
-            MCP server: <code style="background:var(--page);border:1px solid var(--line);border-radius:5px;padding:2px 7px;font-size:0.82rem">deal-analyzer-mcp-production.up.railway.app/mcp</code>
           </div>
         </section>
 
         <!-- Pricing -->
-        <section style="margin-bottom:12px">
+        <section id="pricing" style="margin-bottom:14px">
           <div class="section-label">Pricing</div>
         </section>
         <section class="pricing">
           <div class="price-card">
             <div class="price-tier">Free</div>
             <div class="price-amount">$0</div>
-            <p class="price-desc">No credit card. No account required for quick checks.</p>
+            <p class="price-desc">No credit card. No account needed to start analyzing.</p>
             <ul class="price-features">
               <li>Unlimited quick analyses</li>
               <li>Zillow &amp; Redfin import</li>
@@ -311,7 +353,7 @@
           <div class="price-card featured">
             <div class="price-tier">Pro</div>
             <div class="price-amount">$9 <span>/ month</span></div>
-            <p class="price-desc">For serious investors running multiple deals a month.</p>
+            <p class="price-desc">For investors who run 5–50 deals a month and need to move fast.</p>
             <ul class="price-features">
               <li>Unlimited saved deals</li>
               <li>Side-by-side deal comparison</li>
@@ -319,16 +361,6 @@
               <li>Priority support</li>
             </ul>
             <a href="/billing/checkout" class="button primary price-cta">Get Pro — $9/mo</a>
-          </div>
-        </section>
-
-        <!-- CTA band -->
-        <section class="cta-band">
-          <h2>Ready to check a property?</h2>
-          <p>Quick Check is free, takes 30 seconds, and needs no account.</p>
-          <div class="cta-band-actions">
-            <a href="/deal-widget.html" class="button primary">Quick Check</a>
-            <a href="/add.html" class="button">Full Analysis</a>
           </div>
         </section>
 
