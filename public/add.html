@@ -6,14 +6,62 @@
   <title>Full Analysis — Deal Analyzer</title>
   <link rel="icon" href="/icon.png" />
   <link rel="stylesheet" href="/deal-ui.css" />
+  <style>
+    .analyze-layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.1fr);
+      gap: 20px;
+      align-items: start;
+    }
+    .left-col { display: grid; gap: 16px; }
+    .result-sticky {
+      position: sticky;
+      top: 88px;
+      max-height: calc(100vh - 108px);
+      overflow-y: auto;
+      scrollbar-width: thin;
+    }
+    .result-photo {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      display: block;
+    }
+    details > summary { list-style: none; cursor: pointer; user-select: none; }
+    details > summary::-webkit-details-marker { display: none; }
+    .advanced-summary {
+      color: var(--blue);
+      font-size: 13px;
+      font-weight: 700;
+      padding: 6px 0 2px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .advanced-summary::before { content: '▸'; transition: transform .15s; }
+    details[open] .advanced-summary::before { transform: rotate(90deg); }
+    .result-panel h2 { font-size: 18px; margin-bottom: 12px; }
+    .form-panel h2 { font-size: 18px; margin-bottom: 12px; }
+    @keyframes result-pop {
+      0% { opacity: 0; transform: translateY(6px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    .result-animate { animation: result-pop .25s ease; }
+    @media (max-width: 860px) {
+      .analyze-layout { grid-template-columns: 1fr; }
+      .result-sticky { position: static; max-height: none; }
+    }
+  </style>
 </head>
 <body>
   <header class="topbar">
     <div class="brand">
       <div class="brand-mark">DA</div>
       <div>
-        <div class="brand-title">Add Deal</div>
-        <div class="brand-subtitle">Analyze and save a rental in one pass</div>
+        <div class="brand-title">Deal Analyzer</div>
+        <div class="brand-subtitle">Full analysis</div>
       </div>
     </div>
     <nav class="nav" aria-label="Main navigation">
@@ -28,116 +76,122 @@
   </header>
 
   <main class="page">
-    <section class="intro">
-      <div class="intro-copy">
-        <h1>Add one deal, get the answer fast.</h1>
-        <p class="lead">Use annual taxes and insurance, monthly rent and HOA, and percentages like 20 for down payment or 6.5 for interest rate.</p>
-      </div>
-      <div class="photo-panel" id="listing-photo" style="display:none">
-        <img id="listing-photo-img" src="" alt="Listing photo" style="width:100%;border-radius:10px;object-fit:cover;max-height:260px" />
-      </div>
-    </section>
+    <div class="analyze-layout">
 
-    <section class="workspace">
-      <div class="panel" id="import-bar">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <input id="listing-url" type="url" placeholder="Paste a Zillow or Redfin URL to auto-fill the form" style="flex:1;min-width:200px" />
-          <button type="button" id="import-btn" class="primary">Import</button>
+      <!-- LEFT: import bar + form -->
+      <div class="left-col">
+        <div class="panel" id="import-bar">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input id="listing-url" type="url" placeholder="Paste a Zillow or Redfin URL to auto-fill" style="flex:1;min-width:180px" />
+            <button type="button" id="import-btn" class="primary">Import</button>
+          </div>
+          <div class="status" id="import-status" aria-live="polite"></div>
         </div>
-        <div class="status" id="import-status" aria-live="polite"></div>
+
+        <form class="panel form-panel" id="deal-form">
+          <h2>Deal inputs</h2>
+          <div class="form-grid">
+            <div class="field full">
+              <label for="label">Deal label</label>
+              <input id="label" placeholder="Oak Avenue rental" autocomplete="off" />
+            </div>
+            <div class="field full">
+              <label for="address">Address</label>
+              <input id="address" placeholder="123 Oak Ave, Raleigh, NC" />
+            </div>
+            <div class="field">
+              <label for="price">Purchase price</label>
+              <input id="price" inputmode="decimal" placeholder="425000" required />
+            </div>
+            <div class="field">
+              <label for="rent">Monthly rent</label>
+              <input id="rent" inputmode="decimal" placeholder="3200" />
+            </div>
+            <div class="field">
+              <label for="taxes">Annual taxes</label>
+              <input id="taxes" inputmode="decimal" placeholder="6100" />
+            </div>
+            <div class="field">
+              <label for="insurance">Annual insurance</label>
+              <input id="insurance" inputmode="decimal" placeholder="2100" />
+            </div>
+            <div class="field">
+              <label for="hoa">Monthly HOA</label>
+              <input id="hoa" inputmode="decimal" placeholder="0" />
+            </div>
+            <div class="field">
+              <label for="propertyType">Property type</label>
+              <select id="propertyType">
+                <option value="">Select type</option>
+                <option>Single family</option>
+                <option>Duplex</option>
+                <option>Triplex</option>
+                <option>Multifamily</option>
+                <option>Condo</option>
+                <option>Townhouse</option>
+              </select>
+            </div>
+          </div>
+
+          <details style="margin-top:12px">
+            <summary class="advanced-summary">Advanced assumptions</summary>
+            <div class="form-grid" style="margin-top:12px">
+              <div class="field">
+                <label for="otherMonthlyCosts">Other monthly costs</label>
+                <input id="otherMonthlyCosts" inputmode="decimal" placeholder="0" />
+              </div>
+              <div class="field">
+                <label for="downPaymentPercent">Down payment %</label>
+                <input id="downPaymentPercent" inputmode="decimal" placeholder="20" />
+              </div>
+              <div class="field">
+                <label for="rate">Interest rate %</label>
+                <input id="rate" inputmode="decimal" placeholder="6.5" />
+              </div>
+              <div class="field">
+                <label for="termYears">Loan term (years)</label>
+                <input id="termYears" inputmode="numeric" placeholder="30" />
+              </div>
+              <div class="field">
+                <label for="vacancyRate">Vacancy reserve %</label>
+                <input id="vacancyRate" inputmode="decimal" placeholder="5" />
+              </div>
+              <div class="field">
+                <label for="repairsRate">Repairs reserve %</label>
+                <input id="repairsRate" inputmode="decimal" placeholder="5" />
+              </div>
+              <div class="field">
+                <label for="capexRate">Capex reserve %</label>
+                <input id="capexRate" inputmode="decimal" placeholder="5" />
+              </div>
+              <div class="field">
+                <label for="managementRate">Management %</label>
+                <input id="managementRate" inputmode="decimal" placeholder="8" />
+              </div>
+            </div>
+          </details>
+
+          <div class="actions">
+            <button class="primary" type="submit" data-action="save">Analyze and save</button>
+            <button type="submit" data-action="analyze">Analyze only</button>
+            <a class="button secondary" href="/dashboard">Saved Deals</a>
+          </div>
+          <div class="status" id="status" aria-live="polite"></div>
+        </form>
       </div>
 
-      <form class="panel" id="deal-form">
-        <h2>Deal inputs</h2>
-        <div class="form-grid">
-          <div class="field full">
-            <label for="label">Deal label</label>
-            <input id="label" placeholder="Oak Avenue rental" autocomplete="off" />
+      <!-- RIGHT: sticky result -->
+      <div class="result-sticky" id="result-col">
+        <section class="panel result-panel" aria-live="polite">
+          <img id="listing-photo-img" src="" alt="Listing photo" class="result-photo" style="display:none" />
+          <h2>Result</h2>
+          <div id="result">
+            <div class="empty-state">Paste a URL or fill in the form, then click Analyze.</div>
           </div>
-          <div class="field full">
-            <label for="address">Address</label>
-            <input id="address" placeholder="123 Oak Ave, Raleigh, NC" />
-          </div>
-          <div class="field">
-            <label for="price">Purchase price</label>
-            <input id="price" inputmode="decimal" placeholder="425000" required />
-          </div>
-          <div class="field">
-            <label for="rent">Monthly rent</label>
-            <input id="rent" inputmode="decimal" placeholder="3200" />
-          </div>
-          <div class="field">
-            <label for="taxes">Annual taxes</label>
-            <input id="taxes" inputmode="decimal" placeholder="6100" />
-          </div>
-          <div class="field">
-            <label for="insurance">Annual insurance</label>
-            <input id="insurance" inputmode="decimal" placeholder="2100" />
-          </div>
-          <div class="field">
-            <label for="hoa">Monthly HOA</label>
-            <input id="hoa" inputmode="decimal" placeholder="0" />
-          </div>
-          <div class="field">
-            <label for="otherMonthlyCosts">Other monthly costs</label>
-            <input id="otherMonthlyCosts" inputmode="decimal" placeholder="0" />
-          </div>
-          <div class="field">
-            <label for="vacancyRate">Vacancy reserve %</label>
-            <input id="vacancyRate" inputmode="decimal" placeholder="5" />
-          </div>
-          <div class="field">
-            <label for="repairsRate">Repairs reserve %</label>
-            <input id="repairsRate" inputmode="decimal" placeholder="5" />
-          </div>
-          <div class="field">
-            <label for="capexRate">Capex reserve %</label>
-            <input id="capexRate" inputmode="decimal" placeholder="5" />
-          </div>
-          <div class="field">
-            <label for="managementRate">Management %</label>
-            <input id="managementRate" inputmode="decimal" placeholder="8" />
-          </div>
-          <div class="field">
-            <label for="downPaymentPercent">Down payment %</label>
-            <input id="downPaymentPercent" inputmode="decimal" placeholder="20" />
-          </div>
-          <div class="field">
-            <label for="rate">Interest rate %</label>
-            <input id="rate" inputmode="decimal" placeholder="6.5" />
-          </div>
-          <div class="field">
-            <label for="termYears">Loan term</label>
-            <input id="termYears" inputmode="numeric" placeholder="30" />
-          </div>
-          <div class="field">
-            <label for="propertyType">Property type</label>
-            <select id="propertyType">
-              <option value="">Select type</option>
-              <option>Single family</option>
-              <option>Duplex</option>
-              <option>Triplex</option>
-              <option>Multifamily</option>
-              <option>Condo</option>
-              <option>Townhouse</option>
-            </select>
-          </div>
-        </div>
-        <div class="actions">
-          <button class="primary" type="submit" data-action="save">Analyze and save</button>
-          <button type="submit" data-action="analyze">Analyze only</button>
-          <a class="button secondary" href="/dashboard">View dashboard</a>
-        </div>
-        <div class="status" id="status" aria-live="polite"></div>
-      </form>
+        </section>
+      </div>
 
-      <section class="panel" aria-live="polite">
-        <h2>Result</h2>
-        <div id="result">
-          <div class="empty-state">Run an analysis to see the score, cash flow, and return metrics.</div>
-        </div>
-      </section>
-    </section>
+    </div>
   </main>
 
   <script>
@@ -203,13 +257,12 @@
         const match = Array.from(sel.options).find(o => o.value.toLowerCase().includes(data.propertyType.toLowerCase()));
         if (match) sel.value = match.value;
       }
-      const photoPanel = document.getElementById('listing-photo');
       const photoImg = document.getElementById('listing-photo-img');
       if (data.photoUrl) {
         photoImg.src = data.photoUrl;
-        photoPanel.style.display = '';
+        photoImg.style.display = '';
       } else {
-        photoPanel.style.display = 'none';
+        photoImg.style.display = 'none';
       }
     }
 
@@ -241,6 +294,12 @@
         if (!data) return;
         renderResult(action === 'save' ? data.analysis : data, data.id);
         statusEl.textContent = action === 'save' ? 'Deal saved. View it in Saved Deals.' : 'Analysis ready.';
+        // Scroll result into view on mobile; on desktop it's already sticky/visible
+        if (window.innerWidth <= 860) {
+          document.getElementById('result-col').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          document.getElementById('result-col').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
       } catch (error) {
         statusEl.textContent = error.message || 'Something went wrong.';
       }
@@ -316,21 +375,25 @@
       const summary = analysis.summary || {};
       const input = analysis.input || {};
       const cls = recClass(summary.recommendation);
-      document.getElementById('result').innerHTML = `
+      const resultEl = document.getElementById('result');
+      resultEl.innerHTML = `
         <div class="recommendation ${cls}">${escapeHtml(summary.recommendation || 'HOLD')} - ${Number(summary.score || 0)}/10</div>
         <div class="result-grid">
           <div class="metric"><div class="metric-label">Cash flow after debt</div><div class="metric-value">${currency(summary.monthlyCashFlow)}</div></div>
           <div class="metric"><div class="metric-label">Cash flow before principal</div><div class="metric-value">${currency(summary.monthlyCashFlowBeforePrincipal)}</div></div>
-          <div class="metric"><div class="metric-label">Principal paydown</div><div class="metric-value">${currency(summary.monthlyPrincipalPaydown)}</div></div>
-          <div class="metric"><div class="metric-label">Interest portion</div><div class="metric-value">${currency(summary.monthlyInterest)}</div></div>
-          <div class="metric"><div class="metric-label">Break-even rent</div><div class="metric-value">${currency(summary.breakEvenRent)}</div></div>
           <div class="metric"><div class="metric-label">Cap rate</div><div class="metric-value">${percent(summary.capRate)}</div></div>
           <div class="metric"><div class="metric-label">Cash-on-cash</div><div class="metric-value">${percent(summary.cashOnCashReturn)}</div></div>
+          <div class="metric"><div class="metric-label">Break-even rent</div><div class="metric-value">${currency(summary.breakEvenRent)}</div></div>
           <div class="metric"><div class="metric-label">Rent used</div><div class="metric-value">${currency(input.rent)}</div></div>
+          <div class="metric"><div class="metric-label">Principal paydown</div><div class="metric-value">${currency(summary.monthlyPrincipalPaydown)}</div></div>
+          <div class="metric"><div class="metric-label">Interest portion</div><div class="metric-value">${currency(summary.monthlyInterest)}</div></div>
         </div>
         ${expenseBreakdownHtml(summary)}
         ${savedId ? `<p class="status">Saved as ${escapeHtml(savedId)}</p>` : ''}
       `;
+      resultEl.classList.remove('result-animate');
+      void resultEl.offsetWidth;
+      resultEl.classList.add('result-animate');
     }
 
     function expenseBreakdownHtml(summary) {
@@ -352,7 +415,7 @@
           <div class="breakdown-row total"><span>Total monthly cash outflow</span><strong>${currency(summary.monthlyAllInCost)}</strong></div>
           <div class="breakdown-row total equity"><span>Cost before principal</span><strong>${currency(summary.monthlyCostBeforePrincipal)}</strong></div>
         </div>
-        <p class="breakdown-note">Cash flow before principal treats principal paydown as equity, while cash flow after debt counts the full P&I payment.</p>
+        <p class="breakdown-note">Cash flow before principal treats principal paydown as equity, while cash flow after debt counts the full P&amp;I payment.</p>
       `;
     }
 
@@ -375,11 +438,7 @@
 
     function escapeHtml(value) {
       return String(value ?? '').replace(/[&<>"']/g, (char) => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
       }[char]));
     }
   </script>
