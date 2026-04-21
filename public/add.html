@@ -49,6 +49,29 @@
       100% { opacity: 1; transform: translateY(0); }
     }
     .result-animate { animation: result-pop .25s ease; }
+    .stale-banner {
+      display: none;
+      background: var(--soft-gold);
+      color: var(--gold);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 7px 12px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+    .stale-banner.visible { display: block; }
+    .form-actions-row {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .form-actions-row button, .form-actions-row a {
+      flex: 1;
+      min-width: 0;
+      text-align: center;
+      justify-content: center;
+    }
     @media (max-width: 860px) {
       .analyze-layout { grid-template-columns: 1fr; }
       .result-sticky { position: static; max-height: none; }
@@ -171,8 +194,8 @@
             </div>
           </details>
 
-          <div class="actions">
-            <button class="primary" type="submit" data-action="save">Analyze and save</button>
+          <div class="form-actions-row">
+            <button class="primary" type="submit" data-action="save">Analyze &amp; save</button>
             <button type="submit" data-action="analyze">Analyze only</button>
             <a class="button secondary" href="/dashboard">Saved Deals</a>
           </div>
@@ -185,6 +208,7 @@
         <section class="panel result-panel" aria-live="polite">
           <img id="listing-photo-img" src="" alt="Listing photo" class="result-photo" style="display:none" />
           <h2>Result</h2>
+          <div id="stale-banner" class="stale-banner">⚠ Form changed — re-analyze to update results</div>
           <div id="result">
             <div class="empty-state">Paste a URL or fill in the form, then click Analyze.</div>
           </div>
@@ -195,6 +219,25 @@
   </main>
 
   <script>
+    let lastAnalyzedSnapshot = null;
+    function formSnapshot() {
+      return ['price','rent','taxes','insurance','hoa','otherMonthlyCosts','downPaymentPercent','rate','termYears','vacancyRate','repairsRate','capexRate','managementRate','propertyType']
+        .map(id => document.getElementById(id)?.value ?? '').join('|');
+    }
+    function watchForStale() {
+      document.getElementById('deal-form').querySelectorAll('input,select').forEach(el => {
+        el.addEventListener('input', () => {
+          if (lastAnalyzedSnapshot && formSnapshot() !== lastAnalyzedSnapshot) {
+            document.getElementById('stale-banner').classList.add('visible');
+          } else {
+            document.getElementById('stale-banner').classList.remove('visible');
+          }
+        });
+      });
+    }
+
+    watchForStale();
+
     let signedIn = false;
     fetch('/whoami').then(r => r.json()).then(user => {
       if (user) {
@@ -293,6 +336,8 @@
         const data = action === 'save' ? await saveDeal(payload) : await analyzeDeal(payload);
         if (!data) return;
         renderResult(action === 'save' ? data.analysis : data, data.id);
+        lastAnalyzedSnapshot = formSnapshot();
+        document.getElementById('stale-banner').classList.remove('visible');
         statusEl.textContent = action === 'save' ? 'Deal saved. View it in Saved Deals.' : 'Analysis ready.';
         // Scroll result into view on mobile; on desktop it's already sticky/visible
         if (window.innerWidth <= 860) {
