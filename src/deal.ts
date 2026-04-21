@@ -474,10 +474,15 @@ export function parseListingText(text: unknown, sourceUrl = ''): JsonRecord {
     || bodyText.match(/(?:homeowner[s']?\s+assoc[^$]{0,30})\s*(\$[\d,]+)/i);
   if (hoaMatch) result.hoa = extractMoney(hoaMatch[1], true);
   const hoaAmountStr = result.hoa != null ? String(result.hoa) : null;
-  // Multi-unit: sum rents from all "Unit Type N" sections (Redfin income property pages)
-  const unitRentMatches = [...bodyText.matchAll(/unit\s+(?:type\s+)?\d+\b[^$]{0,600}?\brent\s*:?\s*(\$[\d,]+)/gi)];
-  if (unitRentMatches.length >= 2) {
-    const unitRents = unitRentMatches.map(m => extractMoney(m[1])).filter((v): v is number => v != null && v > 0);
+  // Multi-unit: split by "Unit Type N Information" sections and sum each unit's rent
+  const unitSections = bodyText.split(/unit\s+type\s+\d+\s+information/i);
+  if (unitSections.length >= 3) {
+    const unitRents: number[] = [];
+    for (let i = 1; i < unitSections.length; i++) {
+      const section = unitSections[i].slice(0, 800);
+      const rentMatch = section.match(/\brent\s*:?\s*\$?([\d,]+)/i);
+      if (rentMatch) { const v = Number(rentMatch[1].replace(/,/g, '')); if (v > 0) unitRents.push(v); }
+    }
     if (unitRents.length >= 2) result.rent = unitRents.reduce((a, b) => a + b, 0);
   }
   if (result.rent == null) {
