@@ -7,7 +7,7 @@
     "build:client": "npm --prefix client run build",
     "check": "tsc --noEmit",
     "check:client": "npm --prefix client run check",
-    "dev": "tsx src/server.ts",
+    "dev": "tsx watch src/server.ts",
     "dev:all": "concurrently -k -n server,client -c blue,green \"npm run dev\" \"npm run dev:client\"",
     "dev:client": "npm --prefix client run dev",
     "eval": "tsx src/eval.ts",

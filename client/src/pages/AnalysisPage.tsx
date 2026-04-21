@@ -128,7 +128,7 @@ function toPercentInputString(value: unknown) {
 
 function buildFormStateFromSavedDeal(deal: SavedDeal): AnalysisFormState {
   const input = deal.analysis.input;
-  const assumptions = deal.analysis.assumptions;
+  const assumptions = deal.analysis.assumptions ?? {};
 
   return {
     label: input.label || deal.label || '',

@@ -30,8 +30,35 @@ export function AnalysisResultPanel({ analysis, photoUrl, parserNotes, savedId, 
   }
 
   const summary = analysis.summary;
+  const normalizedSummary = {
+    ...summary,
+    monthlyExpenseBreakdown: {
+      mortgage: summary.monthlyExpenseBreakdown?.mortgage ?? summary.monthlyMortgage ?? 0,
+      debtPayment: summary.monthlyExpenseBreakdown?.debtPayment ?? summary.monthlyExpenseBreakdown?.mortgage ?? summary.monthlyMortgage ?? 0,
+      interest: summary.monthlyExpenseBreakdown?.interest ?? summary.monthlyInterest ?? 0,
+      principalPaydown: summary.monthlyExpenseBreakdown?.principalPaydown ?? summary.monthlyPrincipalPaydown ?? 0,
+      taxes: summary.monthlyExpenseBreakdown?.taxes ?? 0,
+      insurance: summary.monthlyExpenseBreakdown?.insurance ?? 0,
+      hoa: summary.monthlyExpenseBreakdown?.hoa ?? 0,
+      otherMonthlyCosts: summary.monthlyExpenseBreakdown?.otherMonthlyCosts ?? 0,
+      vacancy: summary.monthlyExpenseBreakdown?.vacancy ?? 0,
+      repairs: summary.monthlyExpenseBreakdown?.repairs ?? 0,
+      capex: summary.monthlyExpenseBreakdown?.capex ?? 0,
+      management: summary.monthlyExpenseBreakdown?.management ?? 0,
+    },
+    estimatedInputs: {
+      rent: summary.estimatedInputs?.rent ?? Boolean(analysis.input.estimatedRent),
+      taxes: summary.estimatedInputs?.taxes ?? Boolean(analysis.input.taxesEstimated),
+      insurance: summary.estimatedInputs?.insurance ?? Boolean(analysis.input.insuranceEstimated),
+    },
+    missingInputs: {
+      taxes: summary.missingInputs?.taxes ?? false,
+      insurance: summary.missingInputs?.insurance ?? false,
+      hoa: summary.missingInputs?.hoa ?? false,
+    },
+  };
   const input = analysis.input;
-  const breakdown = summary.monthlyExpenseBreakdown;
+  const breakdown = normalizedSummary.monthlyExpenseBreakdown;
   const expenseRows = [
     { label: 'Debt payment (P&I)', value: breakdown.debtPayment ?? breakdown.mortgage ?? summary.monthlyMortgage },
     { label: 'Interest portion', value: breakdown.interest ?? summary.monthlyInterest },
@@ -47,15 +74,15 @@ export function AnalysisResultPanel({ analysis, photoUrl, parserNotes, savedId, 
   ];
 
   const estimatedNotes: string[] = [];
-  if (summary.estimatedInputs.rent && summary.marketRent) {
+  if (normalizedSummary.estimatedInputs.rent && normalizedSummary.marketRent) {
     estimatedNotes.push(
-      `Rent was estimated at ${currency(summary.marketRent.rent)} per month with ${summary.marketRent.confidence || 'low'} confidence.`,
+      `Rent was estimated at ${currency(normalizedSummary.marketRent.rent)} per month with ${normalizedSummary.marketRent.confidence || 'low'} confidence.`,
     );
   }
-  if (summary.estimatedInputs.taxes && input.taxEstimate) {
+  if (normalizedSummary.estimatedInputs.taxes && input.taxEstimate) {
     estimatedNotes.push(`Taxes were estimated from ${input.taxEstimate.state || 'default'} location assumptions.`);
   }
-  if (summary.estimatedInputs.insurance && input.insuranceEstimate) {
+  if (normalizedSummary.estimatedInputs.insurance && input.insuranceEstimate) {
     estimatedNotes.push('Insurance was estimated from property type and location heuristics.');
   }
 
@@ -80,7 +107,7 @@ export function AnalysisResultPanel({ analysis, photoUrl, parserNotes, savedId, 
             {savedId ? <p className="mt-3 text-sm font-medium text-green">Saved to your dashboard.</p> : null}
           </div>
 
-          <ScoreBadge recommendation={summary.recommendation} score={summary.score} />
+          <ScoreBadge recommendation={normalizedSummary.recommendation} score={normalizedSummary.score} />
         </div>
 
         {isStale ? (
@@ -98,26 +125,26 @@ export function AnalysisResultPanel({ analysis, photoUrl, parserNotes, savedId, 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
             label="After debt"
-            value={currency(summary.monthlyCashFlow)}
-            tone={summary.monthlyCashFlow >= 0 ? 'positive' : 'negative'}
+            value={currency(normalizedSummary.monthlyCashFlow)}
+            tone={normalizedSummary.monthlyCashFlow >= 0 ? 'positive' : 'negative'}
           />
           <MetricCard
             label="Before principal"
-            value={currency(summary.monthlyCashFlowBeforePrincipal)}
-            tone={summary.monthlyCashFlowBeforePrincipal >= 0 ? 'accent' : 'negative'}
+            value={currency(normalizedSummary.monthlyCashFlowBeforePrincipal)}
+            tone={normalizedSummary.monthlyCashFlowBeforePrincipal >= 0 ? 'accent' : 'negative'}
           />
-          <MetricCard label="Cap rate" value={percent(summary.capRate)} />
-          <MetricCard label="Cash-on-cash" value={percent(summary.cashOnCashReturn)} />
-          <MetricCard label="DSCR" value={number(summary.dscr, 2)} />
-          <MetricCard label="Break-even rent" value={currency(summary.breakEvenRent)} />
+          <MetricCard label="Cap rate" value={percent(normalizedSummary.capRate)} />
+          <MetricCard label="Cash-on-cash" value={percent(normalizedSummary.cashOnCashReturn)} />
+          <MetricCard label="DSCR" value={number(normalizedSummary.dscr, 2)} />
+          <MetricCard label="Break-even rent" value={currency(normalizedSummary.breakEvenRent)} />
           <MetricCard label="Rent used" value={currency(input.rent)} />
-          <MetricCard label="Principal paydown" value={currency(summary.monthlyPrincipalPaydown)} />
+          <MetricCard label="Principal paydown" value={currency(normalizedSummary.monthlyPrincipalPaydown)} />
         </div>
       </section>
 
       <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(260px,0.82fr),minmax(0,1.18fr)] xl:items-start">
-        <ScoreGauge score={summary.score} recommendation={summary.recommendation} />
-        <ExpensePieChart summary={summary} />
+        <ScoreGauge score={normalizedSummary.score} recommendation={normalizedSummary.recommendation} />
+        <ExpensePieChart summary={normalizedSummary} />
       </div>
 
       <ProjectionChart analysis={analysis} />
@@ -129,7 +156,7 @@ export function AnalysisResultPanel({ analysis, photoUrl, parserNotes, savedId, 
               <p className="section-kicker">Expense detail</p>
               <h3 className="mt-2 text-xl font-semibold tracking-tight">Monthly cost stack</h3>
             </div>
-            <p className="text-sm text-muted">{currency(summary.monthlyAllInCost)} total cash out</p>
+            <p className="text-sm text-muted">{currency(normalizedSummary.monthlyAllInCost)} total cash out</p>
           </div>
 
           <div className="mt-5 space-y-3">
