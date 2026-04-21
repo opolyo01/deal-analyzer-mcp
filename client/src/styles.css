@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --page: #f7f6f1;
+  --surface: #ffffff;
+  --ink: #202124;
+  --muted: #6f6b62;
+  --line: #ded9cf;
+  --green: #257a5a;
+  --red: #b54747;
+  --gold: #a36f10;
+  --blue: #2f6fa3;
+  --soft-green: #e8f4ee;
+  --soft-red: #f8eceb;
+  --soft-gold: #f7efd9;
+  --soft-blue: #e8f1f7;
+}
+
+@layer base {
+  * {
+    @apply box-border;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply min-h-screen bg-page font-sans text-ink antialiased;
+    background-image:
+      radial-gradient(circle at top left, rgba(47, 111, 163, 0.09), transparent 28%),
+      radial-gradient(circle at top right, rgba(37, 122, 90, 0.1), transparent 26%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(247, 246, 241, 0.95));
+  }
+
+  a {
+    @apply transition-colors duration-150;
+  }
+
+  img {
+    @apply block max-w-full;
+  }
+
+  input,
+  select,
+  textarea {
+    @apply w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink shadow-sm outline-none transition placeholder:text-muted/60 focus:border-blue focus:ring-2 focus:ring-blue/15;
+  }
+
+  button {
+    @apply transition duration-150;
+  }
+
+  button:disabled {
+    @apply cursor-not-allowed opacity-60;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  summary:focus-visible {
+    @apply outline-none ring-2 ring-blue/25 ring-offset-2 ring-offset-page;
+  }
+}
+
+@layer components {
+  .surface-panel {
+    @apply rounded-3xl border border-line/80 bg-white/90 shadow-panel backdrop-blur;
+  }
+
+  .section-kicker {
+    @apply text-xs font-semibold uppercase tracking-[0.18em] text-muted/80;
+  }
+
+  .topbar-link {
+    @apply rounded-full border border-transparent px-4 py-2 text-sm font-semibold text-muted hover:text-ink;
+  }
+
+  .topbar-link-active {
+    @apply border-line bg-white text-ink shadow-sm;
+  }
+}

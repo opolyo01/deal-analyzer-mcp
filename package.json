@@ -3,9 +3,13 @@
   "version": "1.7.0",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "npm run build:client && tsc",
+    "build:client": "npm --prefix client run build",
     "check": "tsc --noEmit",
+    "check:client": "npm --prefix client run check",
     "dev": "tsx src/server.ts",
+    "dev:all": "concurrently -k -n server,client -c blue,green \"npm run dev\" \"npm run dev:client\"",
+    "dev:client": "npm --prefix client run dev",
     "eval": "tsx src/eval.ts",
     "eval:prod": "tsx src/eval.ts https://deal-analyzer-mcp-production.up.railway.app",
     "start": "node dist/server.js"
@@ -33,6 +37,7 @@
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.16",
     "@types/uuid": "^10.0.0",
+    "concurrently": "^9.2.1",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2"
   }

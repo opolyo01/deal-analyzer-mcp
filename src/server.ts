@@ -13,7 +13,9 @@ import { APP_NAME, APP_VERSION, ALLOW_ANONYMOUS_MODE, errorMessage, baseUrl } fr
 
 const projectRoot = path.resolve(__dirname, '..');
 const PORT = Number(process.env.PORT || 3000);
-const dashboardPath = path.join(projectRoot, 'dashboard.html');
+const publicDir = path.join(projectRoot, 'public');
+const clientDistPath = path.join(projectRoot, 'client-dist');
+const clientIndexPath = path.join(clientDistPath, 'index.html');
 
 const AGENT_CONFIG = {
   name: process.env.AGENT_NAME || '',
@@ -32,7 +34,7 @@ const app = express();
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '1mb', verify: (req: any, _res, buf) => { req.rawBody = buf; } }));
 app.use(express.urlencoded({ extended: false }));
-app.use(express.static(path.join(projectRoot, 'public')));
+app.use(express.static(clientDistPath, { index: false }));
 app.use(session({
   secret: process.env.SESSION_SECRET || 'dev-session-secret-change-me',
   resave: false,
@@ -62,15 +64,21 @@ app.use(billingRouter);
 
 ensureDefaultClient(PORT);
 
+function sendClientApp(res: express.Response) {
+  if (fs.existsSync(clientIndexPath)) return res.sendFile(clientIndexPath);
+  return res.type('html').status(503).send('<html><body><h2>Client build missing</h2></body></html>');
+}
+
 // ── Web routes ────────────────────────────────────────────────────────────────
 
-app.get('/', (_req, res) => res.sendFile(path.join(projectRoot, 'public', 'index.html')));
-app.get('/privacy', (_req, res) => res.sendFile(path.join(projectRoot, 'public', 'privacy.html')));
-app.get('/terms', (_req, res) => res.sendFile(path.join(projectRoot, 'public', 'terms.html')));
-app.get('/dashboard', (_req, res) => {
-  if (fs.existsSync(dashboardPath)) return res.sendFile(dashboardPath);
-  return res.type('html').send('<html><body><h2>Dashboard missing</h2></body></html>');
-});
+app.get('/privacy', (_req, res) => res.sendFile(path.join(publicDir, 'privacy.html')));
+app.get('/terms', (_req, res) => res.sendFile(path.join(publicDir, 'terms.html')));
+app.get(['/', '/index.html'], (_req, res) => sendClientApp(res));
+app.get(['/quick-check', '/deal-widget.html'], (_req, res) => sendClientApp(res));
+app.get(['/dashboard', '/dashboard/*', '/deals.html'], (_req, res) => sendClientApp(res));
+app.get(['/add', '/add/*', '/add.html'], (_req, res) => sendClientApp(res));
+app.get(['/agent', '/agent.html'], (_req, res) => sendClientApp(res));
+app.use(express.static(publicDir, { index: false }));
 
 app.get('/health', (_req, res) => res.json({ ok: true, app: APP_NAME, version: APP_VERSION }));
 app.get('/debug/auth', (req, res) => {
