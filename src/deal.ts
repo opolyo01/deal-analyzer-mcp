@@ -330,7 +330,8 @@ export function calculateDeal(rawInput: JsonRecord = {}) {
   else if (input.insuranceEstimated) risks.push('Insurance is estimated from property type and location; verify with a quote');
   else if (input.insurance === 0) risks.push('Insurance is explicitly set to zero');
   if (missingLikelyHoa) risks.push('HOA is missing for a condo/townhome-style property, so monthly cost may be understated');
-  if (input.rentProvided && input.marketRent?.high && input.rent > input.marketRent.high * 1.05) risks.push('Provided rent is above the model market-rent range; verify with current comps');
+  if (input.rentProvided && input.marketRent?.low && input.rent < input.marketRent.low * 0.5) risks.push(`⚠ Entered rent ($${Math.round(input.rent)}/mo) is far below the market estimate ($${Math.round(input.marketRent.rent)}/mo) — please verify rent is correct`);
+  else if (input.rentProvided && input.marketRent?.high && input.rent > input.marketRent.high * 1.05) risks.push('Provided rent is above the model market-rent range; verify with current comps');
   if (dscr > 0 && dscr < 1.1) risks.push('Debt coverage is thin');
   if (monthlyCashFlow > 0) strengths.push('Positive projected monthly cash flow');
   if (capRate >= 0.06) strengths.push('Cap rate clears a basic rental threshold');
