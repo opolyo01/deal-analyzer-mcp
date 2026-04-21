@@ -477,13 +477,21 @@ export function parseListingText(text: unknown, sourceUrl = ''): JsonRecord {
   // Multi-unit: split by "Unit Type N Information" sections and sum each unit's rent
   const unitSections = bodyText.split(/unit\s+type\s+\d+\s*information/i);
   if (unitSections.length >= 3) {
-    const unitRents: number[] = [];
-    for (let i = 1; i < unitSections.length; i++) {
-      const section = unitSections[i].slice(0, 800);
-      const rentMatch = section.match(/rent:\s*\$?([\d,]+)/i);
-      if (rentMatch) { const v = Number(rentMatch[1].replace(/,/g, '')); if (v > 0) unitRents.push(v); }
+    const isHtmlSection = (s: string) => { const t = s.trimStart(); return !/^["{\\\[]/.test(t) && /# of (?:rooms|bedrooms|bathrooms)|floor number|appliances|tenant pays|lease expiration/i.test(t.slice(0, 400)); };
+    const htmlSections = unitSections.slice(1).filter(isHtmlSection);
+    if (htmlSections.length >= 2) {
+      const unitRents: number[] = [];
+      let vacantCount = 0;
+      for (const section of htmlSections) {
+        const rentMatch = section.slice(0, 800).match(/rent:\s*\$?([\d,]+)/i);
+        if (rentMatch) { const v = Number(rentMatch[1].replace(/,/g, '')); if (v > 0) unitRents.push(v); else vacantCount++; }
+        else vacantCount++;
+      }
+      if (unitRents.length >= 1) {
+        const avgRent = unitRents.reduce((a, b) => a + b, 0) / unitRents.length;
+        result.rent = Math.round(unitRents.reduce((a, b) => a + b, 0) + vacantCount * avgRent);
+      }
     }
-    if (unitRents.length >= 2) result.rent = unitRents.reduce((a, b) => a + b, 0);
   }
   if (result.rent == null) {
     for (const pattern of [
