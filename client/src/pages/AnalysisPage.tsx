@@ -1,8 +1,9 @@
 import type { ChangeEvent } from 'react';
-import { useState } from 'react';
-import { analyzeDeal, parseListing, saveDeal } from '../lib/api';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { analyzeDeal, getDeal, parseListing, saveDeal } from '../lib/api';
 import { errorMessage } from '../lib/format';
-import type { ApiError, CurrentUser, DealFormPayload, ParseListingResult } from '../lib/types';
+import type { ApiError, CurrentUser, DealFormPayload, ParseListingResult, SavedDeal } from '../lib/types';
 import { AnalysisResultPanel } from '../components/AnalysisResultPanel';
 
 const propertyOptions = ['Single family', 'Duplex', 'Triplex', 'Multifamily', 'Condo', 'Townhouse'];
@@ -111,7 +112,46 @@ function matchPropertyType(value: string | undefined) {
   return match || value;
 }
 
+function toInputString(value: unknown) {
+  if (value == null || value === '') return '';
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return '';
+  return String(Number(parsed.toFixed(2)));
+}
+
+function toPercentInputString(value: unknown) {
+  if (value == null || value === '') return '';
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return '';
+  return String(Number((parsed * 100).toFixed(2)));
+}
+
+function buildFormStateFromSavedDeal(deal: SavedDeal): AnalysisFormState {
+  const input = deal.analysis.input;
+  const assumptions = deal.analysis.assumptions;
+
+  return {
+    label: input.label || deal.label || '',
+    address: input.address || '',
+    price: toInputString(input.price),
+    rent: toInputString(input.rent),
+    taxes: toInputString(input.taxes),
+    insurance: toInputString(input.insurance),
+    hoa: toInputString(input.hoa),
+    propertyType: input.propertyType || '',
+    otherMonthlyCosts: toInputString(input.otherMonthlyCosts),
+    downPaymentPercent: toPercentInputString(assumptions.downPaymentPercent ?? input.downPaymentPercent),
+    rate: toPercentInputString(assumptions.rate ?? input.rate),
+    termYears: toInputString(assumptions.termYears ?? input.termYears),
+    vacancyRate: toPercentInputString(assumptions.vacancyRate ?? input.vacancyRate),
+    repairsRate: toPercentInputString(assumptions.repairsRate ?? input.repairsRate),
+    capexRate: toPercentInputString(assumptions.capexRate ?? input.capexRate),
+    managementRate: toPercentInputString(assumptions.managementRate ?? input.managementRate),
+  };
+}
+
 export function AnalysisPage({ user }: AnalysisPageProps) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [form, setForm] = useState<AnalysisFormState>(defaultFormState);
   const [listingUrl, setListingUrl] = useState('');
   const [importBanner, setImportBanner] = useState<BannerState | null>(null);
@@ -123,6 +163,56 @@ export function AnalysisPage({ user }: AnalysisPageProps) {
   const [isDirty, setIsDirty] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingSavedDeal, setIsLoadingSavedDeal] = useState(false);
+  const savedDealId = searchParams.get('deal');
+
+  useEffect(() => {
+    if (!savedDealId) {
+      setForm(defaultFormState);
+      setListingUrl('');
+      setImportBanner(null);
+      setStatusBanner(null);
+      setResult(null);
+      setPhotoUrl(null);
+      setParserNotes([]);
+      setSavedId(null);
+      setIsDirty(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingSavedDeal(true);
+    setStatusBanner({ tone: 'neutral', message: 'Loading saved analysis...' });
+
+    void (async () => {
+      try {
+        const savedDeal = await getDeal(savedDealId);
+        if (cancelled) return;
+
+        setForm(buildFormStateFromSavedDeal(savedDeal));
+        setListingUrl(savedDeal.analysis.input.sourceUrl || '');
+        setImportBanner(null);
+        setResult(savedDeal.analysis);
+        setPhotoUrl(typeof savedDeal.input.photoUrl === 'string' ? savedDeal.input.photoUrl : null);
+        setParserNotes([]);
+        setSavedId(savedDeal.id);
+        setIsDirty(false);
+        setStatusBanner({ tone: 'positive', message: 'Saved analysis loaded. Adjust assumptions and save again to update it.' });
+      } catch (caughtError) {
+        if (!cancelled) {
+          setStatusBanner({ tone: 'negative', message: errorMessage(caughtError, 'Failed to load saved deal.') });
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingSavedDeal(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [savedDealId]);
 
   function updateField(field: keyof AnalysisFormState, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -200,6 +290,7 @@ export function AnalysisPage({ user }: AnalysisPageProps) {
         const saved = await saveDeal(payload);
         setResult(saved.analysis);
         setSavedId(saved.id);
+        setSearchParams({ deal: saved.id }, { replace: true });
         setStatusBanner({ tone: 'positive', message: 'Deal analyzed and saved to the dashboard.' });
       } else {
         const analysis = await analyzeDeal(payload);
@@ -264,7 +355,7 @@ export function AnalysisPage({ user }: AnalysisPageProps) {
                 <button
                   type="button"
                   onClick={() => void handleImport()}
-                  disabled={isImporting}
+                  disabled={isImporting || isLoadingSavedDeal}
                   className="rounded-full border border-blue bg-blue px-6 py-3 text-sm font-semibold text-white hover:brightness-95 md:min-w-[140px]"
                 >
                   {isImporting ? 'Importing...' : 'Import'}
@@ -483,7 +574,7 @@ export function AnalysisPage({ user }: AnalysisPageProps) {
             <div className="flex flex-wrap gap-3">
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isLoadingSavedDeal}
                 className="rounded-full border border-green bg-green px-5 py-3 text-sm font-semibold text-white hover:brightness-95"
               >
                 {isSubmitting ? 'Working...' : 'Analyze and save'}
@@ -491,7 +582,7 @@ export function AnalysisPage({ user }: AnalysisPageProps) {
               <button
                 type="button"
                 onClick={() => void handleSubmit('analyze')}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isLoadingSavedDeal}
                 className="rounded-full border border-line bg-white px-5 py-3 text-sm font-semibold text-ink hover:border-muted/40"
               >
                 Analyze only

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { currency, formatDate, percent } from '../lib/format';
 import { getDealLabel, getDealSubtitle } from '../lib/deals';
 import type { SavedDeal } from '../lib/types';
@@ -17,6 +18,7 @@ export function DealCard({ deal, index, selected, onToggleSelect, onDelete, isDe
   const summary = deal.analysis.summary;
   const primaryRisk = deal.analysis.risks[0] || null;
   const primaryStrength = deal.analysis.strengths[0] || null;
+  const detailHref = `/add?deal=${deal.id}`;
 
   return (
     <article className={`surface-panel p-5 transition ${selected ? 'ring-2 ring-green/20' : ''}`}>
@@ -36,13 +38,23 @@ export function DealCard({ deal, index, selected, onToggleSelect, onDelete, isDe
               <p className="text-sm text-muted">{formatDate(deal.createdAt)}</p>
             </div>
 
-            <h3 className="mt-1 text-xl font-semibold tracking-tight">{getDealLabel(deal)}</h3>
+            <h3 className="mt-1 text-xl font-semibold tracking-tight">
+              <Link to={detailHref} className="hover:text-blue">
+                {getDealLabel(deal)}
+              </Link>
+            </h3>
             <p className="mt-1 text-sm text-muted">{getDealSubtitle(deal)}</p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 xl:flex-col xl:items-end">
           <ScoreBadge recommendation={summary.recommendation} score={summary.score} />
+          <Link
+            to={detailHref}
+            className="rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-ink hover:border-muted/40"
+          >
+            Open analysis
+          </Link>
           <button
             type="button"
             onClick={() => onDelete(deal.id)}

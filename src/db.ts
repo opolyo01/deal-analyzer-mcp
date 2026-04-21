@@ -168,16 +168,27 @@ export function getUserByStripeCustomer(stripeCustomerId: string): AppUser | nul
   return (db.prepare('SELECT * FROM users WHERE stripeCustomerId = ?').get(stripeCustomerId) as AppUser | undefined) || null;
 }
 
+function hydrateDealRow(row: DealRow) {
+  try {
+    return { id: row.id, userId: row.userId, label: row.label, createdAt: row.createdAt, input: JSON.parse(row.input), analysis: JSON.parse(row.analysis) };
+  } catch {
+    return { id: row.id, userId: row.userId, label: row.label, createdAt: row.createdAt, input: {}, analysis: { _parseError: true } };
+  }
+}
+
 export function getSavedDeals(userId: string | null = null) {
   const rows = (userId
     ? db.prepare('SELECT * FROM deals WHERE userId = ? ORDER BY createdAt DESC').all(userId)
     : db.prepare('SELECT * FROM deals WHERE userId IS NULL ORDER BY createdAt DESC').all()) as DealRow[];
 
-  return rows.flatMap(row => {
-    try {
-      return [{ id: row.id, userId: row.userId, label: row.label, createdAt: row.createdAt, input: JSON.parse(row.input), analysis: JSON.parse(row.analysis) }];
-    } catch {
-      return [{ id: row.id, userId: row.userId, label: row.label, createdAt: row.createdAt, input: {}, analysis: { _parseError: true } }];
-    }
-  });
+  return rows.map(hydrateDealRow);
+}
+
+export function getSavedDealById(id: string, userId: string | null = null) {
+  const row = (userId
+    ? db.prepare('SELECT * FROM deals WHERE id = ? AND userId = ?').get(id, userId)
+    : db.prepare('SELECT * FROM deals WHERE id = ? AND userId IS NULL').get(id)) as DealRow | undefined;
+
+  if (!row) return null;
+  return hydrateDealRow(row);
 }

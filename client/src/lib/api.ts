@@ -56,6 +56,10 @@ export function getDeals() {
   return request<SavedDeal[]>('/deals');
 }
 
+export function getDeal(id: string) {
+  return request<SavedDeal>(`/deals/${id}`);
+}
+
 export function analyzeDeal(payload: DealFormPayload) {
   return request<DealAnalysis>('/analyze', {
     method: 'POST',

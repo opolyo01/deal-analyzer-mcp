@@ -1,3 +1,6 @@
+import { ScoreBadge } from '../components/ui/ScoreBadge';
+import { MetricCard } from '../components/ui/MetricCard';
+
 function currentHost() {
   if (typeof window === 'undefined') return 'localhost:3000';
   return window.location.host;
@@ -5,18 +8,21 @@ function currentHost() {
 
 export function HomePage() {
   const host = currentHost();
+  const importedFields = ['Address imported', 'Price imported', 'Taxes est.', 'Rent est.'];
+  const underwritingAssumptions = ['20% down', '6.5% rate', '30y loan'];
+  const decisionReasons = ['Positive monthly cash flow', 'Cap rate clears baseline', 'Editable assumptions before saving'];
 
   return (
     <div className="grid gap-10">
-      <section className="grid gap-8 pt-6 lg:grid-cols-[minmax(0,1fr),minmax(320px,420px)] lg:items-center">
-        <div className="max-w-2xl">
+      <section className="grid gap-8 pt-6 xl:grid-cols-[minmax(0,1.08fr),minmax(360px,420px)] xl:items-start">
+        <div className="max-w-3xl">
           <p className="section-kicker">Rental investing, faster</p>
-          <h1 className="mt-3 text-5xl font-semibold leading-tight tracking-tight md:text-6xl">
+          <h1 className="mt-3 text-5xl font-semibold leading-[0.98] tracking-tight md:text-6xl xl:text-[5.25rem]">
             Know if a rental is worth it <span className="text-green">in 30 seconds.</span>
           </h1>
-          <p className="mt-5 max-w-xl text-lg leading-8 text-muted">
-            Paste a Zillow or Redfin link, or enter a few numbers, and get cash flow, cap rate, and a BUY / HOLD / PASS score
-            instantly. No spreadsheet. No guessing.
+          <p className="mt-5 max-w-2xl text-lg leading-8 text-muted">
+            Paste a Zillow or Redfin link, let the app pull in the messy details, and get a clear buy / hold / pass call with the
+            numbers behind it. No spreadsheet. No guessing.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
@@ -35,34 +41,96 @@ export function HomePage() {
           </div>
 
           <p className="mt-4 text-sm text-muted">Free forever for quick checks. Three saves free, then $9/month.</p>
+
+          <div className="mt-8 grid gap-3 sm:grid-cols-3">
+            <MetricCard
+              label="Decision"
+              value={<span className="text-green">BUY</span>}
+              hint="8.2 / 10 score"
+              compact
+              tone="positive"
+            />
+            <MetricCard label="After debt" value="+$412" hint="Monthly cash flow" compact tone="positive" />
+            <MetricCard label="Break-even rent" value="$1,840" hint="Know your floor fast" compact />
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-muted">Import Zillow or Redfin</span>
+            <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-muted">See BUY / HOLD / PASS instantly</span>
+            <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-muted">Save and compare later</span>
+          </div>
         </div>
 
         <div className="surface-panel overflow-hidden">
-          <div className="flex items-center justify-between border-b border-line bg-page/80 px-5 py-4 text-sm text-muted">
-            <span className="font-semibold text-ink">123 Maple St, Austin TX</span>
-            <span className="rounded-full border border-green/20 bg-green-soft px-3 py-1 text-xs font-semibold text-green">8.2 / 10</span>
+          <div className="border-b border-line bg-page/85 px-5 py-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Example workflow</p>
+                <h2 className="mt-2 text-xl font-semibold tracking-tight text-ink">Listing in. Underwriting out.</h2>
+              </div>
+              <span className="rounded-full border border-blue/20 bg-blue-soft px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-blue">
+                30-second pass
+              </span>
+            </div>
           </div>
 
-          <div className="p-5">
-            <div className="inline-flex rounded-full border border-green/20 bg-green-soft px-4 py-2 text-sm font-semibold text-green">BUY</div>
+          <div className="grid gap-4 p-5">
+            <div className="rounded-2xl border border-line/70 bg-page/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Imported from listing</p>
+              <div className="mt-3 rounded-2xl border border-line bg-white px-4 py-3 font-mono text-xs leading-5 text-muted">
+                redfin.com/TX/Austin/example-rental
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {importedFields.map((item) => (
+                  <span key={item} className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-muted">
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-line bg-line">
-              <div className="bg-white p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Monthly cash flow</p>
-                <p className="mt-2 text-3xl font-semibold tracking-tight text-green">+$412</p>
+            <div className="rounded-2xl border border-green/20 bg-green-soft/55 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Decision</p>
+                  <h3 className="mt-2 text-xl font-semibold tracking-tight text-ink">Worth a closer look</h3>
+                </div>
+                <ScoreBadge recommendation="BUY" score={8.2} />
               </div>
-              <div className="bg-white p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Cap rate</p>
-                <p className="mt-2 text-3xl font-semibold tracking-tight">6.4%</p>
+              <div className="mt-4 grid gap-2">
+                {decisionReasons.map((item) => (
+                  <div key={item} className="rounded-2xl border border-white/80 bg-white/75 px-3 py-2 text-sm font-medium text-ink">
+                    {item}
+                  </div>
+                ))}
               </div>
-              <div className="bg-white p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Cash-on-cash</p>
-                <p className="mt-2 text-3xl font-semibold tracking-tight">8.1%</p>
+            </div>
+
+            <div className="rounded-2xl border border-line/70 bg-white p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Underwriting assumptions</p>
+                  <p className="mt-2 text-sm leading-6 text-muted">Editable inputs that drive the score and cash flow.</p>
+                </div>
+                <a
+                  href="/add"
+                  className="rounded-full border border-line bg-page px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-ink hover:border-muted/40"
+                >
+                  Open full analysis
+                </a>
               </div>
-              <div className="bg-white p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Break-even rent</p>
-                <p className="mt-2 text-3xl font-semibold tracking-tight">$1,840</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {underwritingAssumptions.map((item) => (
+                  <span key={item} className="rounded-full border border-blue/20 bg-blue-soft px-3 py-1 text-xs font-medium text-blue">
+                    {item}
+                  </span>
+                ))}
               </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <MetricCard label="Monthly cash flow" value="+$412" compact tone="positive" />
+              <MetricCard label="Cap rate" value="6.4%" compact />
             </div>
           </div>
         </div>

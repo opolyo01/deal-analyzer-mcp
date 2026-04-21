@@ -4,7 +4,7 @@ import session from 'express-session';
 import passport from 'passport';
 import fs from 'node:fs';
 import path from 'node:path';
-import { db, dbPath, getSavedDeals, saveDealRecord, isProUser, countDeals } from './db';
+import { db, dbPath, getSavedDealById, getSavedDeals, saveDealRecord, isProUser, countDeals } from './db';
 import { calculateDeal, parseListing, compareDeals } from './deal';
 import { billingRouter } from './billing';
 import { oauthRouter, sessionOrBearerUser, googleAuthConfigured, ensureDefaultClient } from './oauth';
@@ -121,6 +121,15 @@ app.get('/deals', (req, res) => {
     if (!user && !ALLOW_ANONYMOUS_MODE) return res.json([]);
     res.json(getSavedDeals(user ? user.id : null));
   } catch (error) { res.status(500).json({ error: errorMessage(error, 'Failed to get deals.') }); }
+});
+app.get('/deals/:id', (req, res) => {
+  try {
+    const user = sessionOrBearerUser(req);
+    if (!user && !ALLOW_ANONYMOUS_MODE) return res.status(401).json({ error: 'login_required', loginUrl: '/auth/google' });
+    const deal = getSavedDealById(req.params.id, user ? user.id : null);
+    if (!deal) return res.status(404).json({ error: 'not found' });
+    res.json(deal);
+  } catch (error) { res.status(500).json({ error: errorMessage(error, 'Failed to get deal.') }); }
 });
 app.delete('/deals/:id', (req, res) => {
   try {

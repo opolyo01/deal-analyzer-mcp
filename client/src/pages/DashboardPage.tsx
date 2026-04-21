@@ -15,9 +15,20 @@ interface DashboardPageProps {
   isAuthLoading: boolean;
 }
 
+type RecommendationFilter = 'ALL' | 'BUY' | 'HOLD' | 'PASS';
+
+function filterButtonClasses(filter: RecommendationFilter, activeFilter: RecommendationFilter) {
+  if (filter !== activeFilter) return 'border-line bg-white text-muted hover:border-muted/40 hover:text-ink';
+  if (filter === 'BUY') return 'border-green/25 bg-green-soft text-green';
+  if (filter === 'PASS') return 'border-red/25 bg-red-soft text-red';
+  if (filter === 'HOLD') return 'border-gold/25 bg-gold-soft text-gold';
+  return 'border-blue/25 bg-blue-soft text-blue';
+}
+
 export function DashboardPage({ user, isAuthLoading }: DashboardPageProps) {
   const [deals, setDeals] = useState<SavedDeal[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [recommendationFilter, setRecommendationFilter] = useState<RecommendationFilter>('ALL');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -49,17 +60,39 @@ export function DashboardPage({ user, isAuthLoading }: DashboardPageProps) {
   }, []);
 
   const rankedDeals = sortDeals(deals);
-  const selectedDeals = rankedDeals.filter((deal) => selectedIds.includes(deal.id));
-  const chartDeals = selectedDeals.length >= 2 ? selectedDeals : rankedDeals.slice(0, 5);
+  const recommendationCounts = {
+    BUY: rankedDeals.filter((deal) => deal.analysis.summary.recommendation === 'BUY').length,
+    HOLD: rankedDeals.filter((deal) => deal.analysis.summary.recommendation === 'HOLD').length,
+    PASS: rankedDeals.filter((deal) => deal.analysis.summary.recommendation === 'PASS').length,
+  };
+  const filteredDeals = recommendationFilter === 'ALL'
+    ? rankedDeals
+    : rankedDeals.filter((deal) => deal.analysis.summary.recommendation === recommendationFilter);
+  const selectedDeals = filteredDeals.filter((deal) => selectedIds.includes(deal.id));
+  const chartDeals = selectedDeals.length >= 2 ? selectedDeals : filteredDeals.slice(0, 5);
   const bestSelectedDeal = selectedDeals.length >= 2 ? sortDeals(selectedDeals)[0] : null;
-  const averageScore = rankedDeals.length
-    ? (rankedDeals.reduce((sum, deal) => sum + Number(deal.analysis.summary.score || 0), 0) / rankedDeals.length).toFixed(1)
+  const averageScore = filteredDeals.length
+    ? (filteredDeals.reduce((sum, deal) => sum + Number(deal.analysis.summary.score || 0), 0) / filteredDeals.length).toFixed(1)
     : '0.0';
-  const buyCount = rankedDeals.filter((deal) => deal.analysis.summary.recommendation === 'BUY').length;
-  const topDeal = rankedDeals[0] || null;
-  const totalCashFlow = rankedDeals.reduce((sum, deal) => sum + Number(deal.analysis.summary.monthlyCashFlow || 0), 0);
+  const buyCount = filteredDeals.filter((deal) => deal.analysis.summary.recommendation === 'BUY').length;
+  const topDeal = filteredDeals[0] || null;
+  const totalCashFlow = filteredDeals.reduce((sum, deal) => sum + Number(deal.analysis.summary.monthlyCashFlow || 0), 0);
   const topDealLabel = topDeal ? getDealLabel(topDeal) : null;
   const topDealParts = topDealLabel ? splitDealLabel(topDealLabel) : null;
+  const filterOptions: Array<{ value: RecommendationFilter; label: string; count: number }> = [
+    { value: 'ALL', label: 'All', count: rankedDeals.length },
+    { value: 'BUY', label: 'Buy', count: recommendationCounts.BUY },
+    { value: 'HOLD', label: 'Hold', count: recommendationCounts.HOLD },
+    { value: 'PASS', label: 'Pass', count: recommendationCounts.PASS },
+  ];
+
+  useEffect(() => {
+    const visibleIds = new Set(filteredDeals.map((deal) => deal.id));
+    setSelectedIds((current) => {
+      const next = current.filter((id) => visibleIds.has(id));
+      return next.length === current.length ? current : next;
+    });
+  }, [recommendationFilter, deals]);
 
   function handleToggleSelect(id: string) {
     startTransition(() => {
@@ -113,7 +146,7 @@ export function DashboardPage({ user, isAuthLoading }: DashboardPageProps) {
             >
               New analysis
             </a>
-            {selectedIds.length ? (
+            {selectedDeals.length ? (
               <button
                 type="button"
                 onClick={() => setSelectedIds([])}
@@ -125,8 +158,26 @@ export function DashboardPage({ user, isAuthLoading }: DashboardPageProps) {
           </div>
         </div>
 
+        <div className="mt-6 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Filter rating</span>
+          {filterOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setRecommendationFilter(option.value)}
+              className={`rounded-full border px-4 py-2 text-sm font-semibold ${filterButtonClasses(option.value, recommendationFilter)}`}
+            >
+              {option.label} ({option.count})
+            </button>
+          ))}
+        </div>
+
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Saved deals" value={rankedDeals.length} subtitle={user ? 'Synced to your account' : 'Server-local pipeline'} />
+          <StatCard
+            label="Saved deals"
+            value={filteredDeals.length}
+            subtitle={recommendationFilter === 'ALL' ? (user ? 'Synced to your account' : 'Server-local pipeline') : `${rankedDeals.length} total before filter`}
+          />
           <StatCard label="Buy rated" value={buyCount} subtitle={`${averageScore} average score`} />
           <StatCard label="Monthly cash flow" value={currency(totalCashFlow)} subtitle="Combined after-debt cash flow" />
           <StatCard
@@ -158,7 +209,7 @@ export function DashboardPage({ user, isAuthLoading }: DashboardPageProps) {
             <div key={index} className="surface-panel h-44 animate-pulse bg-page/70" />
           ))}
         </div>
-      ) : rankedDeals.length ? (
+      ) : filteredDeals.length ? (
         <>
           <div className="grid gap-5 xl:grid-cols-2">
             <ReturnsBarChart
@@ -246,11 +297,11 @@ export function DashboardPage({ user, isAuthLoading }: DashboardPageProps) {
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight">Saved deal cards</h2>
               </div>
               <p className="text-sm text-muted">
-                {selectedIds.length ? `${selectedIds.length} selected for comparison` : `Top score: ${topDeal?.analysis.summary.score || 0}/10`}
+                {selectedDeals.length ? `${selectedDeals.length} selected for comparison` : `Top score: ${topDeal?.analysis.summary.score || 0}/10`}
               </p>
             </div>
 
-            {rankedDeals.map((deal, index) => (
+            {filteredDeals.map((deal, index) => (
               <DealCard
                 key={deal.id}
                 deal={deal}
@@ -263,6 +314,20 @@ export function DashboardPage({ user, isAuthLoading }: DashboardPageProps) {
             ))}
           </section>
         </>
+      ) : rankedDeals.length ? (
+        <EmptyState
+          title={`No ${recommendationFilter.toLowerCase()}-rated deals`}
+          description={`Your dashboard has saved deals, but none match the ${recommendationFilter} filter right now.`}
+          actions={
+            <button
+              type="button"
+              onClick={() => setRecommendationFilter('ALL')}
+              className="rounded-full border border-line bg-white px-5 py-3 text-sm font-semibold text-ink hover:border-muted/40"
+            >
+              Show all deals
+            </button>
+          }
+        />
       ) : (
         <EmptyState
           title={isAuthLoading || user ? 'No saved deals yet' : 'Your dashboard is empty'}
@@ -298,10 +363,11 @@ export function DashboardPage({ user, isAuthLoading }: DashboardPageProps) {
         />
       )}
 
-      {rankedDeals.length ? (
+      {filteredDeals.length ? (
         <section className="rounded-3xl border border-line/80 bg-page/80 px-5 py-4 text-sm text-muted">
-          Portfolio snapshot: {buyCount} buy-rated deal{buyCount === 1 ? '' : 's'}, {compactNumber(totalCashFlow)} in combined monthly
-          after-debt cash flow, and an average score of {averageScore}.
+          {recommendationFilter === 'ALL'
+            ? `Portfolio snapshot: ${buyCount} buy-rated deal${buyCount === 1 ? '' : 's'}, ${compactNumber(totalCashFlow)} in combined monthly after-debt cash flow, and an average score of ${averageScore}.`
+            : `Filtered snapshot: ${filteredDeals.length} ${recommendationFilter.toLowerCase()}-rated deal${filteredDeals.length === 1 ? '' : 's'}, ${compactNumber(totalCashFlow)} in combined monthly after-debt cash flow, and an average score of ${averageScore}.`}
         </section>
       ) : null}
     </div>
