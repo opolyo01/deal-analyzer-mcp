@@ -475,12 +475,12 @@ export function parseListingText(text: unknown, sourceUrl = ''): JsonRecord {
   if (hoaMatch) result.hoa = extractMoney(hoaMatch[1], true);
   const hoaAmountStr = result.hoa != null ? String(result.hoa) : null;
   // Multi-unit: split by "Unit Type N Information" sections and sum each unit's rent
-  const unitSections = bodyText.split(/unit\s+type\s+\d+\s+information/i);
+  const unitSections = bodyText.split(/unit\s+type\s+\d+\s*information/i);
   if (unitSections.length >= 3) {
     const unitRents: number[] = [];
     for (let i = 1; i < unitSections.length; i++) {
       const section = unitSections[i].slice(0, 800);
-      const rentMatch = section.match(/\brent\s*:?\s*\$?([\d,]+)/i);
+      const rentMatch = section.match(/rent:\s*\$?([\d,]+)/i);
       if (rentMatch) { const v = Number(rentMatch[1].replace(/,/g, '')); if (v > 0) unitRents.push(v); }
     }
     if (unitRents.length >= 2) result.rent = unitRents.reduce((a, b) => a + b, 0);
