@@ -166,6 +166,10 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to parse listing.');
+        ['price', 'rent', 'taxes', 'insurance', 'hoa'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = '';
+        });
         fillForm(data);
         if (data.fetchFailed) {
           importStatus.textContent = `⚠ ${data.fetchError} Address pre-filled from URL.`;
