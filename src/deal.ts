@@ -474,16 +474,24 @@ export function parseListingText(text: unknown, sourceUrl = ''): JsonRecord {
     || bodyText.match(/(?:homeowner[s']?\s+assoc[^$]{0,30})\s*(\$[\d,]+)/i);
   if (hoaMatch) result.hoa = extractMoney(hoaMatch[1], true);
   const hoaAmountStr = result.hoa != null ? String(result.hoa) : null;
-  for (const pattern of [
-    /(?:monthly\s+rent|estimated\s+rent|rent(?:\s+estimate)?)\s*:?\s*(\$[\d,]+)/i,
-    /\b(?:rent|rental|lease)\b[^$]{0,80}(\$[\d,]+)\s*\/\s*mo(?:nth)?/i,
-    /(\$[\d,]+)\s*\/\s*mo(?:nth)?[^.]{0,80}\b(?:rent|rental|lease)\b/i
-  ]) {
-    const match = bodyText.match(pattern);
-    if (match) {
-      const val = extractMoney(match[1] || match[0]);
-      if (hoaAmountStr && String(val) === hoaAmountStr) continue;
-      result.rent = val; break;
+  // Multi-unit: sum rents from all "Unit Type N" sections (Redfin income property pages)
+  const unitRentMatches = [...bodyText.matchAll(/unit\s+(?:type\s+)?\d+\b[^$]{0,600}?\brent\s*:?\s*(\$[\d,]+)/gi)];
+  if (unitRentMatches.length >= 2) {
+    const unitRents = unitRentMatches.map(m => extractMoney(m[1])).filter((v): v is number => v != null && v > 0);
+    if (unitRents.length >= 2) result.rent = unitRents.reduce((a, b) => a + b, 0);
+  }
+  if (result.rent == null) {
+    for (const pattern of [
+      /(?:monthly\s+rent|estimated\s+rent|rent(?:\s+estimate)?)\s*:?\s*(\$[\d,]+)/i,
+      /\b(?:rent|rental|lease)\b[^$]{0,80}(\$[\d,]+)\s*\/\s*mo(?:nth)?/i,
+      /(\$[\d,]+)\s*\/\s*mo(?:nth)?[^.]{0,80}\b(?:rent|rental|lease)\b/i
+    ]) {
+      const match = bodyText.match(pattern);
+      if (match) {
+        const val = extractMoney(match[1] || match[0]);
+        if (hoaAmountStr && String(val) === hoaAmountStr) continue;
+        result.rent = val; break;
+      }
     }
   }
   if (result.rent == null) {
