@@ -560,7 +560,7 @@ export function extractStructuredDataFromHtml(html: string, sourceUrl = ''): Jso
     address: result.address || fallback.address || '',
     propertyType: result.propertyType || fallback.propertyType || '',
     price: result.price ?? fallback.price ?? null,
-    rent: result.rent ?? fallback.rent ?? null,
+    rent: fallback.rent ?? result.rent ?? null,
     taxes: result.taxes ?? fallback.taxes ?? null,
     hoa: result.hoa ?? fallback.hoa ?? null,
     insurance: result.insurance ?? fallback.insurance ?? null,
