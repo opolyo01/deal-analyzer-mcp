@@ -167,7 +167,13 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to parse listing.');
         fillForm(data);
-        importStatus.textContent = 'Form filled — review and adjust before analyzing.';
+        if (data.fetchFailed) {
+          importStatus.textContent = `⚠ ${data.fetchError} Address pre-filled from URL.`;
+          importStatus.style.color = 'var(--gold)';
+        } else {
+          importStatus.textContent = 'Form filled — review and adjust before analyzing.';
+          importStatus.style.color = '';
+        }
       } catch (err) {
         importStatus.textContent = err.message || 'Could not parse that URL.';
       } finally {

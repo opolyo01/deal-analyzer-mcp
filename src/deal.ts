@@ -559,25 +559,74 @@ export function extractStructuredDataFromHtml(html: string, sourceUrl = ''): Jso
   };
 }
 
+export function extractLocationFromUrl(url: string): JsonRecord {
+  const out: JsonRecord = { sourceUrl: url };
+  // Redfin: /CA/San-Jose/128-E-Reed-St-95112/home/...
+  const redfinMatch = url.match(/redfin\.com\/([A-Z]{2})\/([^/]+)\/([^/]+)\/home\//);
+  if (redfinMatch) {
+    const state = redfinMatch[1];
+    const city = redfinMatch[2].replace(/-/g, ' ');
+    const addressSlug = redfinMatch[3];
+    const zipMatch = addressSlug.match(/(\d{5})$/);
+    const zip = zipMatch ? zipMatch[1] : '';
+    const streetPart = addressSlug.replace(/-\d{5}$/, '').replace(/-/g, ' ');
+    out.address = `${streetPart}, ${city}, ${state}${zip ? ' ' + zip : ''}`;
+    out.state = state;
+    out.city = city;
+  }
+  // Zillow: /homedetails/128-E-Reed-St-San-Jose-CA-95112/...
+  const zillowMatch = url.match(/zillow\.com\/homedetails\/([^/]+)\//);
+  if (zillowMatch) {
+    const slug = zillowMatch[1];
+    const stateZipMatch = slug.match(/-([A-Z]{2})-(\d{5})$/);
+    if (stateZipMatch) {
+      out.state = stateZipMatch[1];
+      const withoutStateZip = slug.replace(/-[A-Z]{2}-\d{5}$/, '').replace(/-/g, ' ');
+      out.address = `${withoutStateZip}, ${stateZipMatch[1]} ${stateZipMatch[2]}`;
+    }
+  }
+  return out;
+}
+
 export async function parseListing(input: JsonRecord = {}) {
   const url = input.url || input.sourceUrl || '';
   const listingText = input.listingText || '';
   if (listingText) return parseListingText(listingText, url);
   if (!url) throw new Error('Provide url or listingText');
   const ua = input._userAgent || 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-  const response = await axios.get(url, {
-    timeout: 12000,
-    headers: {
-      'User-Agent': ua,
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Accept-Encoding': 'gzip, deflate, br',
-      'Cache-Control': 'no-cache', 'Pragma': 'no-cache',
-      'Sec-Fetch-Dest': 'document', 'Sec-Fetch-Mode': 'navigate',
-      'Sec-Fetch-Site': 'none', 'Upgrade-Insecure-Requests': '1',
-    }
-  });
-  return extractStructuredDataFromHtml(response.data, url);
+  try {
+    const response = await axios.get(url, {
+      timeout: 15000,
+      decompress: true,
+      headers: {
+        'User-Agent': ua,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Referer': 'https://www.google.com/',
+        'Cache-Control': 'no-cache',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'cross-site',
+        'Upgrade-Insecure-Requests': '1',
+      }
+    });
+    return extractStructuredDataFromHtml(response.data, url);
+  } catch (err: any) {
+    // Site blocked server-side fetch — extract what we can from the URL itself
+    const status = err?.response?.status;
+    const fromUrl = extractLocationFromUrl(url);
+    return {
+      ...fromUrl,
+      price: null, rent: null, taxes: null, hoa: null,
+      beds: null, baths: null, sqft: null, propertyType: '',
+      fetchFailed: true,
+      fetchError: status === 429 ? 'Rate limited by listing site — please enter price manually'
+        : status === 403 ? 'Access blocked by listing site — please enter price manually'
+        : `Could not fetch listing (${status ?? err?.message}) — please enter price manually`,
+      parserNotes: [`URL fetch failed with ${status ?? err?.message}; address extracted from URL`],
+    };
+  }
 }
 
 export function mergeListingWithOverrides(parsed: JsonRecord, overrides: JsonRecord) {
