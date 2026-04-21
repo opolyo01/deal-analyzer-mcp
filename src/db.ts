@@ -112,7 +112,32 @@ export function createUser(googleId: string, email: string | null, displayName: 
 }
 
 // Deal helpers
+export function findDuplicateDeal(input: JsonRecord, userId: string | null): string | null {
+  if (!userId) return null;
+  const rows = db.prepare('SELECT id, input FROM deals WHERE userId = ?').all(userId) as { id: string; input: string }[];
+  const sourceUrl = String(input.sourceUrl || input.url || '').trim().replace(/[?#].*$/, '');
+  const address = String(input.address || '').trim().toLowerCase();
+  const price = Number(input.price || 0);
+  for (const row of rows) {
+    const saved = JSON.parse(row.input) as JsonRecord;
+    const savedUrl = String(saved.sourceUrl || saved.url || '').trim().replace(/[?#].*$/, '');
+    if (sourceUrl && savedUrl && sourceUrl === savedUrl) return row.id;
+    const savedAddress = String(saved.address || '').trim().toLowerCase();
+    const savedPrice = Number(saved.price || 0);
+    if (address && savedAddress && address === savedAddress && price && savedPrice && price === savedPrice) return row.id;
+  }
+  return null;
+}
+
 export function saveDealRecord(input: JsonRecord, analysis: JsonRecord, userId: string | null = null) {
+  const existingId = findDuplicateDeal(input, userId);
+  if (existingId) {
+    db.prepare('UPDATE deals SET label = ?, input = ?, analysis = ?, createdAt = ? WHERE id = ?').run(
+      input.label || input.address || 'Deal',
+      JSON.stringify(input), JSON.stringify(analysis), new Date().toISOString(), existingId
+    );
+    return existingId;
+  }
   const id = uuidv4();
   db.prepare('INSERT INTO deals (id, userId, label, input, analysis, createdAt) VALUES (?, ?, ?, ?, ?, ?)').run(
     id, userId, input.label || input.address || 'Deal',
