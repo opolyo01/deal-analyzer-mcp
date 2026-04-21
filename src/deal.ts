@@ -274,34 +274,43 @@ export function calculateDeal(rawInput: JsonRecord = {}) {
   const breakEvenRent = monthlyAllInCost;
 
   let score = 5;
+  // Only penalize for truly missing data — data our system estimated is not a reason to penalize
   const missingTaxes = !input.taxesProvided && !input.taxesEstimated;
   const missingInsurance = !input.insuranceProvided && !input.insuranceEstimated;
-  const estimatedTaxes = input.taxesEstimated;
-  const estimatedInsurance = input.insuranceEstimated;
-  const estimatedCriticalExpense = estimatedTaxes || estimatedInsurance;
   const missingLikelyHoa = propertyTypeUsuallyHasHoa(input.propertyType) && !input.hoaProvided;
-  if (monthlyCashFlow >= 500) score += 3;
-  else if (monthlyCashFlow >= 200) score += 2;
-  else if (monthlyCashFlow > 0) score += 1;
-  else if (monthlyCashFlow <= -500) score -= 3;
-  else if (monthlyCashFlow < 0) score -= 2;
-  if (capRate >= 0.08) score += 2;
-  else if (capRate >= 0.065) score += 1;
-  else if (capRate < 0.045) score -= 1;
-  if (cashOnCashReturn >= 0.10) score += 2;
-  else if (cashOnCashReturn >= 0.06) score += 1;
-  else if (cashOnCashReturn < 0) score -= 1;
-  if (dscr >= 1.30) score += 1;
-  else if (dscr > 0 && dscr < 1.0) score -= 1;
-  if (input.downPaymentPercent >= 0.25) score += 1;
+
+  // Cash flow — thresholds calibrated for 2025+ market with 6.5%+ rates
+  if (monthlyCashFlow >= 400) score += 3;
+  else if (monthlyCashFlow >= 150) score += 2;
+  else if (monthlyCashFlow >= 0) score += 1;
+  else if (monthlyCashFlow >= -200) score += 0;
+  else if (monthlyCashFlow >= -500) score -= 1;
+  else score -= 2;
+
+  // Also reward positive cash flow before principal (equity building counts)
+  if (monthlyCashFlow < 0 && monthlyCashFlowBeforePrincipal >= 200) score += 1;
+
+  // Cap rate — realistic for today's market
+  if (capRate >= 0.07) score += 2;
+  else if (capRate >= 0.055) score += 1;
+  else if (capRate < 0.04) score -= 1;
+
+  // Cash-on-cash — adjusted for higher cost of leverage
+  if (cashOnCashReturn >= 0.08) score += 2;
+  else if (cashOnCashReturn >= 0.04) score += 1;
+  else if (cashOnCashReturn < -0.03) score -= 1;
+
+  // Debt coverage
+  if (dscr >= 1.25) score += 1;
+  else if (dscr > 0 && dscr < 0.9) score -= 1;
+
+  // Only cap/penalize for truly missing (not estimated) data
   if (missingTaxes) score -= 1;
   if (missingInsurance) score -= 1;
   if (missingLikelyHoa) score -= 1;
-  if (input.estimatedRent && (missingTaxes || missingInsurance)) score = Math.min(score, 6);
-  else if (missingTaxes || missingInsurance) score = Math.min(score, 7);
-  if (input.estimatedRent && estimatedCriticalExpense) score = Math.min(score, 7);
-  else if (estimatedCriticalExpense) score = Math.min(score, 8);
-  if (missingLikelyHoa) score = Math.min(score, 6);
+  if (missingTaxes || missingInsurance) score = Math.min(score, 7);
+  if (missingLikelyHoa) score = Math.min(score, 7);
+
   score = clamp(score, 1, 10);
 
   let recommendation = 'HOLD';
@@ -315,10 +324,10 @@ export function calculateDeal(rawInput: JsonRecord = {}) {
   if (capRate < 0.05) risks.push('Cap rate is weak for a leveraged rental');
   if (cashOnCashReturn < 0.05) risks.push('Cash-on-cash return is modest');
   if (missingTaxes) risks.push('Property taxes are missing, so the model may be optimistic');
-  else if (estimatedTaxes) risks.push(`Property taxes are estimated from ${input.taxEstimate?.state || 'default'} location assumptions; verify the actual tax bill`);
+  else if (input.taxesEstimated) risks.push(`Property taxes are estimated from ${input.taxEstimate?.state || 'default'} location assumptions; verify the actual tax bill`);
   else if (input.taxes === 0) risks.push('Property taxes are explicitly set to zero');
   if (missingInsurance) risks.push('Insurance is missing, so monthly cost may be understated');
-  else if (estimatedInsurance) risks.push('Insurance is estimated from property type and location; verify with a quote');
+  else if (input.insuranceEstimated) risks.push('Insurance is estimated from property type and location; verify with a quote');
   else if (input.insurance === 0) risks.push('Insurance is explicitly set to zero');
   if (missingLikelyHoa) risks.push('HOA is missing for a condo/townhome-style property, so monthly cost may be understated');
   if (input.rentProvided && input.marketRent?.high && input.rent > input.marketRent.high * 1.05) risks.push('Provided rent is above the model market-rent range; verify with current comps');
@@ -355,7 +364,7 @@ export function calculateDeal(rawInput: JsonRecord = {}) {
         capex: round(monthlyCapex), management: round(monthlyManagement)
       },
       missingInputs: { taxes: missingTaxes, insurance: missingInsurance, hoa: missingLikelyHoa },
-      estimatedInputs: { rent: input.estimatedRent, taxes: estimatedTaxes, insurance: estimatedInsurance },
+      estimatedInputs: { rent: input.estimatedRent, taxes: input.taxesEstimated, insurance: input.insuranceEstimated },
       marketRent: input.marketRent,
       estimatedRent: input.estimatedRent,
       estimatedRentConfidence: input.estimatedRentConfidence
