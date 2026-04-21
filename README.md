@@ -1,118 +1,206 @@
 # Deal Analyzer MCP
 
-## 🚀 Overview
-Full-stack real estate deal analysis platform:
-- Advanced scoring engine (cash flow, cap rate, DSCR)
-- Listing parser (Redfin/Zillow)
-- Deal comparison + ranking
-- SQLite persistence (deal history)
-- ChatGPT MCP integration
-- Mobile dashboard UI
+Full-stack real estate deal analysis app with a React frontend, Express backend, SQLite persistence, listing parsing, and MCP support for Claude.ai and ChatGPT.
 
----
+## Overview
 
-## 🧠 Features
+Core capabilities:
+- Analyze rental deals with cash flow, cap rate, cash-on-cash return, DSCR, and BUY / HOLD / PASS scoring
+- Parse Zillow and Redfin listings
+- Save, rank, compare, and delete deals
+- Serve a React app for the full UI
+- Expose MCP tooling and OAuth flows for Claude.ai / ChatGPT integrations
+- Keep `privacy.html` and `terms.html` as static pages for store/app requirements
 
-### 📊 Analyze Deals
-- Cash flow
-- Cap rate
-- Cash-on-cash return
-- DSCR
-- Risk + strengths insights
+## Current App Routes
 
-### 🔎 Parse Listings
-- Extract price, rent, taxes, beds, baths
-- Works with URLs or pasted text
+React app routes:
+- `/` — home / landing page
+- `/quick-check` — lightweight deal check
+- `/add` — full analysis page
+- `/dashboard` — saved deals and comparison UI
+- `/agent` — agent profile page
 
-### 🥇 Compare Deals
-- Rank investments
-- Identify best deal
+Legacy aliases that still resolve to the React app:
+- `/index.html`
+- `/deal-widget.html`
+- `/add.html`
+- `/deals.html`
+- `/agent.html`
 
-### 💾 Save & Track
-- SQLite database (`deals.db`)
-- Save + retrieve deals
+Static pages served from `public/`:
+- `/privacy`
+- `/terms`
 
-### 🖥️ Dashboard
-- Mobile-friendly UI
-- Color-coded scoring (BUY / HOLD / PASS)
-- Ranked deal list
+## Project Structure
 
----
+```text
+client/       React + Vite + TypeScript + Tailwind frontend
+src/          Express server, MCP routes, OAuth, scoring engine, DB access
+public/       Static assets plus privacy/terms HTML
+client-dist/  Built frontend output
+dist/         Built server output
+deals.db      SQLite database
+```
 
-## ⚙️ Run Locally
+## Local Development
+
+Requirements:
+- Node.js 20+
+
+Install dependencies:
 
 ```bash
 npm install
-npm run build
-npm start
+npm --prefix client install
 ```
 
-Open:
-```
-http://localhost:3000/dashboard
+Recommended: run both backend and frontend together.
+
+```bash
+npm run dev:all
 ```
 
-For TypeScript development:
+That starts:
+- Express on `http://localhost:3000`
+- Vite on `http://localhost:5173`
+
+Use `http://localhost:5173` when you want frontend hot reload.
+
+You can also run them separately:
 
 ```bash
 npm run dev
-npm run check
+npm run dev:client
+```
+
+Notes:
+- `npm run dev` only starts Express.
+- `npm run dev:client` only starts the Vite dev server.
+- Vite proxies API/auth requests to the backend on port `3000`.
+
+## Production-Style Local Run
+
+Build both the frontend and backend:
+
+```bash
 npm run build
 ```
 
----
+Start the compiled server:
 
-## 🔌 API Endpoints
+```bash
+npm start
+```
 
-- POST /analyze
-- POST /parse-listing
-- POST /compare
-- POST /saveDeal
-- GET /deals
-- GET /dashboard
+Then open:
 
----
+```text
+http://localhost:3000
+```
 
-## 🤖 MCP Tools
+## Scripts
 
-- analyzeDeal
-- parseListing
-- analyzeListing
-- compareDeals
-- saveDeal
-- getDeals
+Root scripts:
 
----
+```bash
+npm run dev         # Express dev server
+npm run dev:client  # Vite dev server
+npm run dev:all     # Express + Vite together
+npm run check       # Backend TypeScript check
+npm run check:client
+npm run build       # Build client + server
+npm run build:client
+npm run start       # Run compiled server
+```
 
-## 🌐 Deploy (Railway - easiest)
+Client-only scripts:
 
-1. Go to https://railway.app
-2. Create new project → Deploy from GitHub
-3. Select this repository
-4. Deploy (no config needed)
+```bash
+npm --prefix client run dev
+npm --prefix client run check
+npm --prefix client run build
+```
 
-Your app will be live at:
-https://your-app.up.railway.app
+## API Endpoints
 
----
+Main app endpoints:
+- `POST /analyze`
+- `POST /parse-listing`
+- `POST /compare`
+- `POST /saveDeal`
+- `GET /deals`
+- `DELETE /deals/:id`
+- `GET /agent-config`
+- `GET /health`
 
-## 🧠 Production Notes
+Auth / session:
+- `GET /whoami`
+- `GET /auth/google`
+- `GET /auth/google/callback`
+- `GET /logout`
 
-- SQLite persists locally (fine for MVP)
-- For scale → switch to Postgres
-- Parser may break if listing sites change structure
+MCP / app metadata:
+- `GET /mcp`
+- `POST /mcp`
+- `DELETE /mcp`
+- `GET /.well-known/app.json`
+- `GET /.well-known/openai-apps-challenge`
+- `GET /.well-known/oauth-authorization-server`
+- `GET /.well-known/oauth-protected-resource`
 
----
+## MCP Tools
 
-## 💡 Next Steps
+Available MCP capabilities include:
+- `analyzeDeal`
+- `parseListing`
+- `analyzeListing`
+- `compareDeals`
+- `saveDeal`
+- `getDeals`
 
-- Add authentication (multi-user SaaS)
-- Integrate rent comps API
-- Export reports (PDF)
-- Add charts (ROI visualization)
+## Environment Notes
 
----
+Common environment variables:
+- `PORT`
+- `PUBLIC_BASE_URL`
+- `DATABASE_PATH`
+- `SESSION_SECRET`
+- `ALLOW_ANONYMOUS_MODE`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_CALLBACK_URL`
+- `DEFAULT_OAUTH_CLIENT_ID`
+- `DEFAULT_OAUTH_CLIENT_SECRET`
+- `DEFAULT_OAUTH_REDIRECT_URIS`
+- `AGENT_NAME`
+- `AGENT_PHOTO_URL`
+- `AGENT_BROKERAGE`
+- `AGENT_PHONE`
+- `AGENT_EMAIL`
+- `AGENT_BIO`
+- `AGENT_ZILLOW_URL`
+- `AGENT_LICENSE`
 
-## 🏆 Status
+## Deployment
 
-Production-ready MVP (backend + UI + persistence)
+Railway works well for the current setup:
+
+1. Create a new Railway project
+2. Deploy from this GitHub repository
+3. Set required environment variables
+4. Run the standard build/start flow
+
+App behavior in production:
+- Express serves the built React app from `client-dist/`
+- `privacy.html` and `terms.html` remain static
+- SQLite persists locally unless `DATABASE_PATH` points elsewhere
+
+## Status
+
+Current state:
+- Full React frontend migration completed
+- Legacy HTML app pages removed
+- Static `privacy` and `terms` retained
+- Express + Vite local workflow documented
+- Build and typecheck passing
