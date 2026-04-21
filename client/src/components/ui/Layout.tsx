@@ -18,16 +18,13 @@ export function Layout({ user, isAuthLoading, children }: LayoutProps) {
   const isQuickCheck = location.pathname === '/quick-check' || location.pathname === '/deal-widget.html';
   const isAnalysis = location.pathname === '/add' || location.pathname === '/add.html';
   const isDashboard = location.pathname === '/dashboard' || location.pathname === '/deals.html';
-  const isAgent = location.pathname === '/agent' || location.pathname === '/agent.html';
   const subtitle = isHome
     ? 'Rental underwriting without a spreadsheet'
     : isQuickCheck
       ? '30-second rental screening'
       : isAnalysis
         ? 'Full analysis workspace'
-        : isAgent
-          ? 'Investor-friendly agent profile'
-          : 'Saved deal dashboard';
+        : 'Saved deal dashboard';
   const userLabel = user?.displayName || user?.email || 'Signed in';
 
   return (
@@ -56,9 +53,6 @@ export function Layout({ user, isAuthLoading, children }: LayoutProps) {
             </Link>
             <Link to="/dashboard" className={routeLinkClass(isDashboard)}>
               Saved Deals
-            </Link>
-            <Link to="/agent" className={routeLinkClass(isAgent)}>
-              Agent
             </Link>
 
             <div className="ml-1 rounded-full border border-line bg-page px-4 py-2 text-sm text-muted">

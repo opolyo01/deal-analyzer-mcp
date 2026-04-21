@@ -7,17 +7,6 @@ export interface CurrentUser {
   subscriptionStatus?: string | null;
 }
 
-export interface AgentConfig {
-  name: string;
-  photo: string;
-  brokerage: string;
-  phone: string;
-  email: string;
-  bio: string;
-  zillowUrl: string;
-  licenseNumber: string;
-}
-
 export interface LocationInfo {
   city?: string;
   state?: string;

@@ -1,6 +1,5 @@
 import type {
   ApiError,
-  AgentConfig,
   CurrentUser,
   DealAnalysis,
   DealFormPayload,
@@ -51,10 +50,6 @@ async function request<T>(input: string, init: RequestInit = {}) {
 
 export function getCurrentUser() {
   return request<CurrentUser | null>('/whoami');
-}
-
-export function getAgentConfig() {
-  return request<AgentConfig>('/agent-config');
 }
 
 export function getDeals() {

@@ -1,7 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/ui/Layout';
 import { useAuth } from './hooks/useAuth';
-import { AgentPage } from './pages/AgentPage';
 import { AnalysisPage } from './pages/AnalysisPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { HomePage } from './pages/HomePage';
@@ -21,8 +20,8 @@ export function App() {
         <Route path="/deals.html" element={<Navigate to="/dashboard" replace />} />
         <Route path="/add" element={<AnalysisPage user={auth.user} />} />
         <Route path="/add.html" element={<AnalysisPage user={auth.user} />} />
-        <Route path="/agent" element={<AgentPage />} />
-        <Route path="/agent.html" element={<AgentPage />} />
+        <Route path="/agent" element={<Navigate to="/" replace />} />
+        <Route path="/agent.html" element={<Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

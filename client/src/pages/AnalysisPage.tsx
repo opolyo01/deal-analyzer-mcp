@@ -228,32 +228,48 @@ export function AnalysisPage({ user }: AnalysisPageProps) {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,0.92fr),minmax(340px,0.78fr)] xl:items-start">
-      <div className="grid gap-5">
+    <div className="grid gap-6 2xl:grid-cols-[minmax(0,0.92fr),minmax(380px,0.78fr)] 2xl:items-start">
+      <div className="min-w-0 grid gap-5">
         <section className="surface-panel p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-            <div className="min-w-0 flex-1">
+          <div className="grid gap-6">
+            <div className="min-w-0 max-w-2xl">
               <p className="section-kicker">Import listing</p>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight">Start with a listing URL or fill the form manually.</h1>
+              <h1 className="mt-2 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
+                Import a listing URL to prefill the form.
+              </h1>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-muted">
+                Paste a Zillow or Redfin link to prefill the address, price, taxes, HOA, and photo. You can still override every
+                field below before saving.
+              </p>
             </div>
-            <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto lg:min-w-[420px]">
-              <input
-                type="url"
-                value={listingUrl}
-                onChange={(event) => {
-                  setListingUrl(event.target.value);
-                  if (result) setIsDirty(true);
-                }}
-                placeholder="Paste a Zillow or Redfin URL"
-              />
-              <button
-                type="button"
-                onClick={() => void handleImport()}
-                disabled={isImporting}
-                className="rounded-full border border-blue bg-blue px-5 py-3 text-sm font-semibold text-white hover:brightness-95"
-              >
-                {isImporting ? 'Importing...' : 'Import'}
-              </button>
+
+            <div className="max-w-3xl">
+              <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted" htmlFor="listing-url">
+                Listing URL
+              </label>
+              <div className="mt-2 flex flex-col gap-3 md:flex-row">
+                <div className="min-w-0 flex-1">
+                  <input
+                    id="listing-url"
+                    type="url"
+                    value={listingUrl}
+                    onChange={(event) => {
+                      setListingUrl(event.target.value);
+                      if (result) setIsDirty(true);
+                    }}
+                    placeholder="https://www.redfin.com/..."
+                    className="min-w-0"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleImport()}
+                  disabled={isImporting}
+                  className="rounded-full border border-blue bg-blue px-6 py-3 text-sm font-semibold text-white hover:brightness-95 md:min-w-[140px]"
+                >
+                  {isImporting ? 'Importing...' : 'Import'}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -265,14 +281,14 @@ export function AnalysisPage({ user }: AnalysisPageProps) {
         </section>
 
         <section className="surface-panel p-6">
-          <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="section-kicker">Deal inputs</p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight">Core underwriting fields</h2>
             </div>
-            <p className="text-sm text-muted">
+            <div className="inline-flex rounded-full border border-line bg-page px-4 py-2 text-sm text-muted">
               {user ? `Saving as ${user.displayName || user.email || 'your account'}` : 'Save will redirect you to sign in if required.'}
-            </p>
+            </div>
           </div>
 
           <form
@@ -497,7 +513,7 @@ export function AnalysisPage({ user }: AnalysisPageProps) {
         </section>
       </div>
 
-      <div className="xl:sticky xl:top-28">
+      <div className="min-w-0 2xl:sticky 2xl:top-28">
         <AnalysisResultPanel
           analysis={result}
           photoUrl={photoUrl}

@@ -185,9 +185,6 @@ export function HomePage() {
           <a href="/terms" className="hover:text-ink">
             Terms
           </a>
-          <a href="/agent" className="hover:text-ink">
-            Talk to an investor-friendly realtor
-          </a>
         </div>
       </footer>
     </div>

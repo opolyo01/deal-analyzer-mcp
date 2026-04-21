@@ -19,14 +19,12 @@ React app routes:
 - `/quick-check` — lightweight deal check
 - `/add` — full analysis page
 - `/dashboard` — saved deals and comparison UI
-- `/agent` — agent profile page
 
 Legacy aliases that still resolve to the React app:
 - `/index.html`
 - `/deal-widget.html`
 - `/add.html`
 - `/deals.html`
-- `/agent.html`
 
 Static pages served from `public/`:
 - `/privacy`
@@ -131,7 +129,6 @@ Main app endpoints:
 - `POST /saveDeal`
 - `GET /deals`
 - `DELETE /deals/:id`
-- `GET /agent-config`
 - `GET /health`
 
 Auth / session:
@@ -173,14 +170,6 @@ Common environment variables:
 - `DEFAULT_OAUTH_CLIENT_ID`
 - `DEFAULT_OAUTH_CLIENT_SECRET`
 - `DEFAULT_OAUTH_REDIRECT_URIS`
-- `AGENT_NAME`
-- `AGENT_PHOTO_URL`
-- `AGENT_BROKERAGE`
-- `AGENT_PHONE`
-- `AGENT_EMAIL`
-- `AGENT_BIO`
-- `AGENT_ZILLOW_URL`
-- `AGENT_LICENSE`
 
 ## Deployment
 

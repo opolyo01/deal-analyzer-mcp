@@ -1,4 +1,3 @@
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { currency } from '../../lib/format';
 import type { AnalysisSummary } from '../../lib/types';
 
@@ -22,9 +21,23 @@ export function ExpensePieChart({ summary }: ExpensePieChartProps) {
     { name: 'Capex', value: breakdown.capex },
     { name: 'Management', value: breakdown.management },
   ].filter((entry) => entry.value > 0);
+  const total = slices.reduce((sum, slice) => sum + slice.value, 0);
+  const gradient = slices.length
+    ? (() => {
+        let current = 0;
+        return `conic-gradient(${slices
+          .map((slice, index) => {
+            const next = current + (slice.value / total) * 360;
+            const segment = `${COLORS[index % COLORS.length]} ${current.toFixed(2)}deg ${next.toFixed(2)}deg`;
+            current = next;
+            return segment;
+          })
+          .join(', ')})`;
+      })()
+    : 'conic-gradient(#ece9e2 0deg 360deg)';
 
   return (
-    <section className="surface-panel p-6">
+    <section className="surface-panel self-start overflow-hidden p-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="section-kicker">Monthly outflow mix</p>
@@ -33,21 +46,21 @@ export function ExpensePieChart({ summary }: ExpensePieChartProps) {
         <p className="text-sm text-muted">{currency(summary.monthlyAllInCost)} all in</p>
       </div>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-[260px,minmax(0,1fr)] lg:items-center">
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie data={slices} dataKey="value" innerRadius={62} outerRadius={94} paddingAngle={2}>
-                {slices.map((slice, index) => (
-                  <Cell key={slice.name} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value: number | string) => currency(Number(value))} />
-            </PieChart>
-          </ResponsiveContainer>
+      <div className="mt-5 grid gap-5 lg:grid-cols-[220px,minmax(0,1fr)] lg:items-center">
+        <div className="mx-auto flex w-full max-w-[220px] justify-center">
+          <div
+            className="relative h-[220px] w-[220px] rounded-full"
+            style={{ backgroundImage: gradient }}
+          >
+            <div className="absolute inset-[32px] rounded-full border border-line/70 bg-white/95" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Monthly total</div>
+              <div className="mt-2 text-2xl font-semibold tracking-tight text-ink">{currency(summary.monthlyAllInCost)}</div>
+            </div>
+          </div>
         </div>
 
-        <div className="grid gap-2">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
           {slices.map((slice, index) => (
             <div key={slice.name} className="flex items-center justify-between rounded-2xl border border-line/70 bg-page/70 px-4 py-3">
               <div className="flex items-center gap-3">

@@ -17,17 +17,6 @@ const publicDir = path.join(projectRoot, 'public');
 const clientDistPath = path.join(projectRoot, 'client-dist');
 const clientIndexPath = path.join(clientDistPath, 'index.html');
 
-const AGENT_CONFIG = {
-  name: process.env.AGENT_NAME || '',
-  photo: process.env.AGENT_PHOTO_URL || '',
-  brokerage: process.env.AGENT_BROKERAGE || '',
-  phone: process.env.AGENT_PHONE || '',
-  email: process.env.AGENT_EMAIL || '',
-  bio: process.env.AGENT_BIO || '',
-  zillowUrl: process.env.AGENT_ZILLOW_URL || '',
-  licenseNumber: process.env.AGENT_LICENSE || '',
-};
-
 // ── App setup ─────────────────────────────────────────────────────────────────
 
 const app = express();
@@ -77,7 +66,7 @@ app.get(['/', '/index.html'], (_req, res) => sendClientApp(res));
 app.get(['/quick-check', '/deal-widget.html'], (_req, res) => sendClientApp(res));
 app.get(['/dashboard', '/dashboard/*', '/deals.html'], (_req, res) => sendClientApp(res));
 app.get(['/add', '/add/*', '/add.html'], (_req, res) => sendClientApp(res));
-app.get(['/agent', '/agent.html'], (_req, res) => sendClientApp(res));
+app.get(['/agent', '/agent.html'], (_req, res) => res.redirect('/'));
 app.use(express.static(publicDir, { index: false }));
 
 app.get('/health', (_req, res) => res.json({ ok: true, app: APP_NAME, version: APP_VERSION }));
@@ -125,7 +114,6 @@ app.post('/saveDeal', (req, res) => {
     res.json({ id, analysis, user: user ? { id: user.id, email: user.email } : null });
   } catch (error) { res.status(500).json({ error: errorMessage(error, 'Failed to save deal.') }); }
 });
-app.get('/agent-config', (_req, res) => res.json(AGENT_CONFIG));
 
 app.get('/deals', (req, res) => {
   try {

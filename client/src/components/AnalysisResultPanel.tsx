@@ -60,7 +60,7 @@ export function AnalysisResultPanel({ analysis, photoUrl, parserNotes, savedId, 
   }
 
   return (
-    <div className="grid gap-5">
+    <div className="grid min-w-0 gap-5">
       <section className="surface-panel p-6">
         {photoUrl ? (
           <img
@@ -115,7 +115,7 @@ export function AnalysisResultPanel({ analysis, photoUrl, parserNotes, savedId, 
         </div>
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[320px,minmax(0,1fr)]">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(260px,0.82fr),minmax(0,1.18fr)] xl:items-start">
         <ScoreGauge score={summary.score} recommendation={summary.recommendation} />
         <ExpensePieChart summary={summary} />
       </div>
