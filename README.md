@@ -185,6 +185,23 @@ App behavior in production:
 - `privacy.html` and `terms.html` remain static
 - SQLite persists locally unless `DATABASE_PATH` points elsewhere
 
+## Automated Deploys
+
+This repo includes a GitHub Actions workflow at `.github/workflows/deploy-railway.yml` that deploys to Railway on every push to `main`.
+
+Required GitHub secret:
+- `RAILWAY_TOKEN` — Railway project token scoped to the production environment
+
+Optional GitHub secrets:
+- `RAILWAY_PROJECT_ID` — only needed if the token alone is not enough to target the correct project
+- `RAILWAY_ENVIRONMENT_NAME` — only needed if you want to force a specific Railway environment such as `production`
+
+The workflow:
+- installs dependencies
+- runs backend and client typechecks
+- deploys with `railway up`
+- smoke tests the live `/health` endpoint plus unauthenticated MCP `tools/list` and `analyzeDeal`
+
 ## Status
 
 Current state:

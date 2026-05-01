@@ -1,0 +1,111 @@
+name: Deploy To Railway
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: railway-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      NODE_VERSION: "20"
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_SERVICE_NAME: deal-analyzer-mcp
+      PRODUCTION_URL: https://deal-analyzer-mcp-production.up.railway.app
+      RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+      RAILWAY_ENVIRONMENT_NAME: ${{ secrets.RAILWAY_ENVIRONMENT_NAME }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate deployment secrets
+        run: |
+          if [ -z "${RAILWAY_TOKEN:-}" ]; then
+            echo "Missing required GitHub secret: RAILWAY_TOKEN"
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            client/package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install client dependencies
+        run: npm --prefix client ci
+
+      - name: Run backend typecheck
+        run: npm run check
+
+      - name: Run client typecheck
+        run: npm run check:client
+
+      - name: Deploy to Railway
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmd=(npx -y @railway/cli up --service "$RAILWAY_SERVICE_NAME" --ci --message "GitHub Actions deploy $GITHUB_SHA")
+          if [ -n "${RAILWAY_PROJECT_ID:-}" ]; then
+            cmd+=(--project "$RAILWAY_PROJECT_ID")
+          fi
+          if [ -n "${RAILWAY_ENVIRONMENT_NAME:-}" ]; then
+            cmd+=(--environment "$RAILWAY_ENVIRONMENT_NAME")
+          fi
+          "${cmd[@]}"
+
+      - name: Smoke test production MCP
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools_list_body='{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+          analyze_body='{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"analyzeDeal","arguments":{"price":250000,"rent":2200,"taxes":2400,"insurance":1200,"city":"Phoenix","state":"AZ"}}}'
+
+          health_ok=0
+          tools_ok=0
+          analyze_ok=0
+
+          for _ in {1..18}; do
+            if curl -fsS "$PRODUCTION_URL/health" > /tmp/health.json; then
+              health_ok=1
+            fi
+
+            tools_code=$(printf '%s' "$tools_list_body" | curl -sS -o /tmp/tools.json -w '%{http_code}' "$PRODUCTION_URL/mcp" -H 'Content-Type: application/json' --data-binary @- || true)
+            if [ "$tools_code" = "200" ] && jq -e '.result.tools | length > 0 and all(.[]; has("annotations"))' /tmp/tools.json >/dev/null; then
+              tools_ok=1
+            fi
+
+            analyze_code=$(printf '%s' "$analyze_body" | curl -sS -o /tmp/analyze.json -w '%{http_code}' "$PRODUCTION_URL/mcp" -H 'Content-Type: application/json' --data-binary @- || true)
+            if [ "$analyze_code" = "200" ] && jq -e '.result.structuredContent.summary.score >= 0' /tmp/analyze.json >/dev/null; then
+              analyze_ok=1
+            fi
+
+            if [ "$health_ok" = "1" ] && [ "$tools_ok" = "1" ] && [ "$analyze_ok" = "1" ]; then
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo "Health response:"
+          cat /tmp/health.json || true
+          echo
+          echo "tools/list response:"
+          cat /tmp/tools.json || true
+          echo
+          echo "analyzeDeal response:"
+          cat /tmp/analyze.json || true
+          exit 1
