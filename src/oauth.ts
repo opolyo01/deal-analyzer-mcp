@@ -138,7 +138,7 @@ oauthRouter.get('/authorize', (req, res) => {
   if (!client) return res.status(400).send('Unknown client_id');
   if (response_type !== 'code') return res.status(400).send('Unsupported response_type');
   if (!redirect_uri || !client.redirect_uris.includes(redirect_uri)) return res.status(400).send('Invalid redirect_uri');
-  if (!code_challenge || code_challenge_method !== 'S256') return res.status(400).send('PKCE S256 required');
+  if (code_challenge && code_challenge_method !== 'S256') return res.status(400).send('Unsupported code_challenge_method, use S256');
   if (!req.user) {
     req.session.returnTo = req.originalUrl;
     return res.redirect('/auth/google');
@@ -171,7 +171,7 @@ oauthRouter.post('/token', (req, res) => {
     console.log(`[token] code_found=${!!record} redirect_uri_match=${record?.redirect_uri === req.body.redirect_uri}`);
     if (!record || record.expiresAt < Date.now()) return res.status(400).json({ error: 'invalid_grant', error_description: 'Code not found or expired' });
     if (record.client_id !== clientId || record.redirect_uri !== req.body.redirect_uri) return res.status(400).json({ error: 'invalid_grant', error_description: `client_id or redirect_uri mismatch` });
-    if (!req.body.code_verifier || sha256base64url(req.body.code_verifier) !== record.code_challenge) return res.status(400).json({ error: 'invalid_grant', error_description: 'PKCE verification failed' });
+    if (record.code_challenge && (!req.body.code_verifier || sha256base64url(req.body.code_verifier) !== record.code_challenge)) return res.status(400).json({ error: 'invalid_grant', error_description: 'PKCE verification failed' });
     oauthCodes.delete(req.body.code);
     const accessToken = randomToken();
     const refreshToken = randomToken();
