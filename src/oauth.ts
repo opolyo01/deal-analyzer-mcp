@@ -135,6 +135,7 @@ oauthRouter.get('/authorize', (req, res) => {
   const code_challenge = queryParam(req.query.code_challenge);
   const code_challenge_method = queryParam(req.query.code_challenge_method);
   const client = oauthClients.get(client_id);
+  console.log(`[authorize] client=${client_id} found=${!!client} redirect_uri=${redirect_uri} registered=${JSON.stringify(client?.redirect_uris)}`);
   if (!client) return res.status(400).send('Unknown client_id');
   if (response_type !== 'code') return res.status(400).send('Unsupported response_type');
   if (!redirect_uri || !client.redirect_uris.includes(redirect_uri)) return res.status(400).send('Invalid redirect_uri');
@@ -153,6 +154,7 @@ oauthRouter.get('/authorize', (req, res) => {
 });
 
 oauthRouter.post('/token', (req, res) => {
+  console.log(`[token] body=${JSON.stringify(req.body)} auth=${req.headers.authorization?.slice(0,20)}`);
   const grantType = req.body.grant_type;
   const clientSecret = req.body.client_secret;
 
