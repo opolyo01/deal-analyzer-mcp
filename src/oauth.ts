@@ -176,9 +176,9 @@ oauthRouter.post('/token', (req, res) => {
   const ACCESS_TTL = 30 * 24 * 3600 * 1000;
   if (grantType === 'authorization_code') {
     const record = oauthCodes.get(req.body.code);
-    console.log(`[token] code_found=${!!record} redirect_uri_match=${record?.redirect_uri === req.body.redirect_uri}`);
+    console.log(`[token] code_found=${!!record} stored_redirect=${record?.redirect_uri} got_redirect=${req.body.redirect_uri} redirect_uri_match=${record?.redirect_uri === req.body.redirect_uri}`);
     if (!record || record.expiresAt < Date.now()) return res.status(400).json({ error: 'invalid_grant', error_description: 'Code not found or expired' });
-    if (record.client_id !== clientId || record.redirect_uri !== req.body.redirect_uri) return res.status(400).json({ error: 'invalid_grant', error_description: `client_id or redirect_uri mismatch` });
+    if (record.client_id !== clientId || record.redirect_uri !== req.body.redirect_uri) return res.status(400).json({ error: 'invalid_grant', error_description: `client_id or redirect_uri mismatch: stored=${record.redirect_uri} got=${req.body.redirect_uri}` });
     if (record.code_challenge && (!req.body.code_verifier || sha256base64url(req.body.code_verifier) !== record.code_challenge)) return res.status(400).json({ error: 'invalid_grant', error_description: 'PKCE verification failed' });
     oauthCodes.delete(req.body.code);
     const accessToken = randomToken();
