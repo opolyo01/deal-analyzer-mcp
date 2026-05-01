@@ -9,55 +9,272 @@
   },
   "tools": {
     "analyzeDeal": {
+      "name": "analyzeDeal",
+      "title": "Analyze real estate deal",
+      "description": "Underwrite a rental property and score it 1-10. Only price is required — rent, taxes, and insurance are estimated when omitted. Accepts: price, rent, taxes (annual), insurance (annual), hoa (monthly), rentComps, city/state/address, otherMonthlyCosts, vacancyRate, repairsRate, capexRate, managementRate, downPaymentPercent, rate, termYears, propertyType, label. Returns score, recommendation (BUY/HOLD/PASS), monthly cash flow, cap rate, cash-on-cash return, break-even rent, estimated inputs, market-rent range, and risks/strengths.",
+      "readOnlyHint": false,
+      "openWorldHint": false,
+      "destructiveHint": false,
+      "read_only": false,
+      "open_world": false,
+      "destructive": false,
+      "read_only_justification": "Computes underwriting results and writes request logs on the app server, so it is not strictly read-only.",
+      "open_world_justification": "Does not write to public internet state or third-party systems.",
+      "destructive_justification": "Does not delete, overwrite, send, or otherwise perform irreversible actions.",
+      "justifications": {
+        "read_only_justification": "Computes underwriting results and writes request logs on the app server, so it is not strictly read-only.",
+        "open_world_justification": "Does not write to public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, send, or otherwise perform irreversible actions."
+      },
       "annotations": {
-        "readOnlyHint": true,
+        "title": "Analyze real estate deal",
+        "readOnlyHint": false,
         "openWorldHint": false,
         "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Only calculates underwriting metrics from the provided inputs and returns the result without saving or changing records.",
-        "open_world_justification": "Does not fetch or update external systems and operates only on the arguments passed to the tool.",
-        "destructive_justification": "Does not delete, overwrite, send, or otherwise perform irreversible actions."
       }
     },
     "parseListing": {
-      "annotations": {
-        "readOnlyHint": true,
-        "openWorldHint": true,
-        "destructiveHint": false
-      },
+      "name": "parseListing",
+      "title": "Parse listing",
+      "description": "Extract fields (price, rent, taxes, HOA, address, property type, photo) from a Zillow or Redfin URL or raw listing text.",
+      "readOnlyHint": false,
+      "openWorldHint": false,
+      "destructiveHint": false,
+      "read_only": false,
+      "open_world": false,
+      "destructive": false,
+      "read_only_justification": "Fetches listing content, parses it, and writes request logs on the app server, so it is not strictly read-only.",
+      "open_world_justification": "Reads public listing pages but does not write to public internet state or third-party systems.",
+      "destructive_justification": "Does not delete, overwrite, or perform irreversible actions in the app or on external services.",
       "justifications": {
-        "read_only_justification": "Only extracts structured listing fields from pasted text or a listing page and returns them without modifying stored data.",
-        "open_world_justification": "Fetches public listing pages when a URL is provided, so it reads from external websites outside the app's private system.",
+        "read_only_justification": "Fetches listing content, parses it, and writes request logs on the app server, so it is not strictly read-only.",
+        "open_world_justification": "Reads public listing pages but does not write to public internet state or third-party systems.",
         "destructive_justification": "Does not delete, overwrite, or perform irreversible actions in the app or on external services."
+      },
+      "annotations": {
+        "title": "Parse listing",
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
       }
     },
     "analyzeListing": {
-      "annotations": {
-        "readOnlyHint": true,
-        "openWorldHint": true,
-        "destructiveHint": false
-      },
+      "name": "analyzeListing",
+      "title": "Parse and analyze listing",
+      "description": "Parse a Zillow or Redfin listing URL or text, then immediately underwrite it. Pass any additional known fields (rent, taxes, etc.) alongside the url to override parsed values. Best single tool when the user shares a listing link.",
+      "readOnlyHint": false,
+      "openWorldHint": false,
+      "destructiveHint": false,
+      "read_only": false,
+      "open_world": false,
+      "destructive": false,
+      "read_only_justification": "Fetches listing content, computes an analysis, and writes request logs on the app server, so it is not strictly read-only.",
+      "open_world_justification": "Reads public listing pages but does not write to public internet state or third-party systems.",
+      "destructive_justification": "Does not delete, overwrite, or carry out irreversible actions.",
       "justifications": {
-        "read_only_justification": "Only parses listing data and runs underwriting calculations before returning the result without saving records.",
-        "open_world_justification": "Fetches public listing pages when a URL is provided, so it reads from external websites before analyzing the property.",
+        "read_only_justification": "Fetches listing content, computes an analysis, and writes request logs on the app server, so it is not strictly read-only.",
+        "open_world_justification": "Reads public listing pages but does not write to public internet state or third-party systems.",
         "destructive_justification": "Does not delete, overwrite, or carry out irreversible actions."
+      },
+      "annotations": {
+        "title": "Parse and analyze listing",
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
       }
     },
     "compareDeals": {
+      "name": "compareDeals",
+      "title": "Compare multiple deals",
+      "description": "Rank multiple deals side by side by score and cash flow. Each deal in the array accepts the same fields as analyzeDeal.",
+      "readOnlyHint": false,
+      "openWorldHint": false,
+      "destructiveHint": false,
+      "read_only": false,
+      "open_world": false,
+      "destructive": false,
+      "read_only_justification": "Computes ranked deal comparisons and writes request logs on the app server, so it is not strictly read-only.",
+      "open_world_justification": "Does not write to public internet state or third-party systems.",
+      "destructive_justification": "Does not delete, overwrite, send, or otherwise perform irreversible actions.",
+      "justifications": {
+        "read_only_justification": "Computes ranked deal comparisons and writes request logs on the app server, so it is not strictly read-only.",
+        "open_world_justification": "Does not write to public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, send, or otherwise perform irreversible actions."
+      },
       "annotations": {
-        "readOnlyHint": true,
+        "title": "Compare multiple deals",
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
+    },
+    "saveDeal": {
+      "name": "saveDeal",
+      "title": "Save deal",
+      "description": "Save or update a deal in the signed-in user's account so it appears on the dashboard. If the same listing URL or address and price already exist for that user, the existing saved deal is updated. Accepts the same fields as analyzeDeal. Requires the user to be authenticated.",
+      "readOnlyHint": false,
+      "openWorldHint": false,
+      "destructiveHint": true,
+      "read_only": false,
+      "open_world": false,
+      "destructive": true,
+      "read_only_justification": "Writes a saved deal record and computed analysis to the signed-in user's private account.",
+      "open_world_justification": "Only writes to the app's private database and does not publish to public internet state or third-party systems.",
+      "destructive_justification": "Can overwrite an existing saved deal when the same listing URL or address and price already exist for that user.",
+      "justifications": {
+        "read_only_justification": "Writes a saved deal record and computed analysis to the signed-in user's private account.",
+        "open_world_justification": "Only writes to the app's private database and does not publish to public internet state or third-party systems.",
+        "destructive_justification": "Can overwrite an existing saved deal when the same listing URL or address and price already exist for that user."
+      },
+      "annotations": {
+        "title": "Save deal",
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      }
+    },
+    "getDeals": {
+      "name": "getDeals",
+      "title": "Get saved deals",
+      "description": "Retrieve all saved deals for the currently signed-in user.",
+      "readOnlyHint": false,
+      "openWorldHint": false,
+      "destructiveHint": false,
+      "read_only": false,
+      "open_world": false,
+      "destructive": false,
+      "read_only_justification": "Reads saved deals and writes request logs on the app server, so it is not strictly read-only.",
+      "open_world_justification": "Only reads from the app's private database and does not write to public internet state or third-party systems.",
+      "destructive_justification": "Does not delete, overwrite, or perform irreversible actions.",
+      "justifications": {
+        "read_only_justification": "Reads saved deals and writes request logs on the app server, so it is not strictly read-only.",
+        "open_world_justification": "Only reads from the app's private database and does not write to public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, or perform irreversible actions."
+      },
+      "annotations": {
+        "title": "Get saved deals",
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
+    }
+  },
+  "tool_justifications": [
+    {
+      "name": "analyzeDeal",
+      "title": "Analyze real estate deal",
+      "description": "Underwrite a rental property and score it 1-10. Only price is required — rent, taxes, and insurance are estimated when omitted. Accepts: price, rent, taxes (annual), insurance (annual), hoa (monthly), rentComps, city/state/address, otherMonthlyCosts, vacancyRate, repairsRate, capexRate, managementRate, downPaymentPercent, rate, termYears, propertyType, label. Returns score, recommendation (BUY/HOLD/PASS), monthly cash flow, cap rate, cash-on-cash return, break-even rent, estimated inputs, market-rent range, and risks/strengths.",
+      "read_only": false,
+      "readOnlyHint": false,
+      "read_only_justification": "Computes underwriting results and writes request logs on the app server, so it is not strictly read-only.",
+      "open_world": false,
+      "openWorldHint": false,
+      "open_world_justification": "Does not write to public internet state or third-party systems.",
+      "destructive": false,
+      "destructiveHint": false,
+      "destructive_justification": "Does not delete, overwrite, send, or otherwise perform irreversible actions.",
+      "annotations": {
+        "title": "Analyze real estate deal",
+        "readOnlyHint": false,
         "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Only compares the provided deal inputs and returns ranked analyses without changing any stored data.",
-        "open_world_justification": "Does not contact external services and only computes a comparison from the supplied arguments.",
+        "read_only_justification": "Computes underwriting results and writes request logs on the app server, so it is not strictly read-only.",
+        "open_world_justification": "Does not write to public internet state or third-party systems.",
         "destructive_justification": "Does not delete, overwrite, send, or otherwise perform irreversible actions."
       }
     },
-    "saveDeal": {
+    {
+      "name": "parseListing",
+      "title": "Parse listing",
+      "description": "Extract fields (price, rent, taxes, HOA, address, property type, photo) from a Zillow or Redfin URL or raw listing text.",
+      "read_only": false,
+      "readOnlyHint": false,
+      "read_only_justification": "Fetches listing content, parses it, and writes request logs on the app server, so it is not strictly read-only.",
+      "open_world": false,
+      "openWorldHint": false,
+      "open_world_justification": "Reads public listing pages but does not write to public internet state or third-party systems.",
+      "destructive": false,
+      "destructiveHint": false,
+      "destructive_justification": "Does not delete, overwrite, or perform irreversible actions in the app or on external services.",
       "annotations": {
+        "title": "Parse listing",
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Fetches listing content, parses it, and writes request logs on the app server, so it is not strictly read-only.",
+        "open_world_justification": "Reads public listing pages but does not write to public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, or perform irreversible actions in the app or on external services."
+      }
+    },
+    {
+      "name": "analyzeListing",
+      "title": "Parse and analyze listing",
+      "description": "Parse a Zillow or Redfin listing URL or text, then immediately underwrite it. Pass any additional known fields (rent, taxes, etc.) alongside the url to override parsed values. Best single tool when the user shares a listing link.",
+      "read_only": false,
+      "readOnlyHint": false,
+      "read_only_justification": "Fetches listing content, computes an analysis, and writes request logs on the app server, so it is not strictly read-only.",
+      "open_world": false,
+      "openWorldHint": false,
+      "open_world_justification": "Reads public listing pages but does not write to public internet state or third-party systems.",
+      "destructive": false,
+      "destructiveHint": false,
+      "destructive_justification": "Does not delete, overwrite, or carry out irreversible actions.",
+      "annotations": {
+        "title": "Parse and analyze listing",
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Fetches listing content, computes an analysis, and writes request logs on the app server, so it is not strictly read-only.",
+        "open_world_justification": "Reads public listing pages but does not write to public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, or carry out irreversible actions."
+      }
+    },
+    {
+      "name": "compareDeals",
+      "title": "Compare multiple deals",
+      "description": "Rank multiple deals side by side by score and cash flow. Each deal in the array accepts the same fields as analyzeDeal.",
+      "read_only": false,
+      "readOnlyHint": false,
+      "read_only_justification": "Computes ranked deal comparisons and writes request logs on the app server, so it is not strictly read-only.",
+      "open_world": false,
+      "openWorldHint": false,
+      "open_world_justification": "Does not write to public internet state or third-party systems.",
+      "destructive": false,
+      "destructiveHint": false,
+      "destructive_justification": "Does not delete, overwrite, send, or otherwise perform irreversible actions.",
+      "annotations": {
+        "title": "Compare multiple deals",
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Computes ranked deal comparisons and writes request logs on the app server, so it is not strictly read-only.",
+        "open_world_justification": "Does not write to public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, send, or otherwise perform irreversible actions."
+      }
+    },
+    {
+      "name": "saveDeal",
+      "title": "Save deal",
+      "description": "Save or update a deal in the signed-in user's account so it appears on the dashboard. If the same listing URL or address and price already exist for that user, the existing saved deal is updated. Accepts the same fields as analyzeDeal. Requires the user to be authenticated.",
+      "read_only": false,
+      "readOnlyHint": false,
+      "read_only_justification": "Writes a saved deal record and computed analysis to the signed-in user's private account.",
+      "open_world": false,
+      "openWorldHint": false,
+      "open_world_justification": "Only writes to the app's private database and does not publish to public internet state or third-party systems.",
+      "destructive": true,
+      "destructiveHint": true,
+      "destructive_justification": "Can overwrite an existing saved deal when the same listing URL or address and price already exist for that user.",
+      "annotations": {
+        "title": "Save deal",
         "readOnlyHint": false,
         "openWorldHint": false,
         "destructiveHint": true
@@ -68,19 +285,32 @@
         "destructive_justification": "Can overwrite an existing saved deal when the same listing URL or address and price already exist for that user."
       }
     },
-    "getDeals": {
+    {
+      "name": "getDeals",
+      "title": "Get saved deals",
+      "description": "Retrieve all saved deals for the currently signed-in user.",
+      "read_only": false,
+      "readOnlyHint": false,
+      "read_only_justification": "Reads saved deals and writes request logs on the app server, so it is not strictly read-only.",
+      "open_world": false,
+      "openWorldHint": false,
+      "open_world_justification": "Only reads from the app's private database and does not write to public internet state or third-party systems.",
+      "destructive": false,
+      "destructiveHint": false,
+      "destructive_justification": "Does not delete, overwrite, or perform irreversible actions.",
       "annotations": {
-        "readOnlyHint": true,
+        "title": "Get saved deals",
+        "readOnlyHint": false,
         "openWorldHint": false,
         "destructiveHint": false
       },
       "justifications": {
-        "read_only_justification": "Only reads saved deals for the signed-in user and returns them without modifying records.",
-        "open_world_justification": "Only reads from the app's private database and does not access public internet state or third-party systems.",
+        "read_only_justification": "Reads saved deals and writes request logs on the app server, so it is not strictly read-only.",
+        "open_world_justification": "Only reads from the app's private database and does not write to public internet state or third-party systems.",
         "destructive_justification": "Does not delete, overwrite, or perform irreversible actions."
       }
     }
-  },
+  ],
   "test_cases": [
     {
       "description": "Analyze a rental property with explicit rent and annual expenses.",
