@@ -34,7 +34,7 @@
       "client_secret_post",
       "client_secret_basic"
     ],
-    "notes": "Core read-only tools are intended to work without a signed-in account after the current MCP patch is deployed. Saved-deal features require sign-in."
+    "notes": "Core read-only tools work without a signed-in account in production. Saved-deal features require sign-in."
   },
   "tool_justifications": [
     {
@@ -198,19 +198,18 @@
     "connection_steps": [
       "Add the remote MCP server URL: https://deal-analyzer-mcp-production.up.railway.app/mcp",
       "Verify the domain token served at /.well-known/openai-apps-challenge",
-      "Scan tools from the MCP server after deploying the current branch"
+      "Scan tools from the MCP server in production"
     ],
-    "reviewer_account_requirements": "No reviewer account should be necessary for the five positive test cases above if the current MCP patch is deployed. The saveDeal and getDeals tools require sign-in and should only be tested if separate review credentials are provided.",
+    "reviewer_account_requirements": "No reviewer account should be necessary for the five positive test cases above. The saveDeal and getDeals tools require sign-in and should only be tested if separate review credentials are provided.",
     "important_notes": [
       "This app is US-focused. Zillow and Redfin parsing is designed for US listing formats.",
       "Core value is in read-only underwriting and comparison. Saved-deal features are optional account features.",
-      "Production must be updated with the current branch before submission so read-only tools are accessible without auth and tool annotations are visible in tools/list."
+      "Production has been verified to allow unauthenticated read-only MCP access and to expose tool annotations in tools/list."
     ]
   },
   "release_notes": "Deal Analyzer v1.0 - Initial release. Features: analyze rental deals, estimate missing underwriting inputs, parse Zillow and Redfin listings, analyze pasted listing text, compare multiple deals side by side, and optionally save deals to a signed-in dashboard.",
   "pre_submit_blockers": [
-    "Deploy the current MCP changes before submission. Production currently reports anonymousModeEnabled: false and will otherwise block reviewer access to read-only tools.",
-    "After deployment, verify that tools/list returns annotations for every tool and that the five positive test cases succeed in ChatGPT developer mode.",
+    "Verify in ChatGPT developer mode that tools/list and the five positive test cases behave the same way as the production curl checks.",
     "If you want OpenAI to test saveDeal or getDeals, provide a separate review account that can complete Google OAuth without MFA or additional verification."
   ],
   "sources": [
