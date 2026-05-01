@@ -106,8 +106,12 @@ const protectedResourceMeta = (req: Request) => {
 
 oauthRouter.get('/.well-known/oauth-authorization-server', (req, res) => res.json(authServerMeta(req)));
 oauthRouter.get('/.well-known/oauth-protected-resource', (req, res) => res.json(protectedResourceMeta(req)));
+// RFC 9728 alternative: /.well-known/oauth-protected-resource/{path}
+oauthRouter.get('/.well-known/oauth-protected-resource/mcp', (req, res) => res.json(protectedResourceMeta(req)));
 oauthRouter.get('/mcp/.well-known/oauth-protected-resource', (req, res) => res.json(protectedResourceMeta(req)));
 oauthRouter.get('/mcp/.well-known/oauth-authorization-server', (req, res) => res.json(authServerMeta(req)));
+// OpenID Connect discovery (some clients fall back to this)
+oauthRouter.get('/.well-known/openid-configuration', (req, res) => res.json(authServerMeta(req)));
 
 oauthRouter.post('/register', (req, res) => {
   const redirectUris = Array.isArray(req.body.redirect_uris) ? req.body.redirect_uris : [];
