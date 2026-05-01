@@ -205,37 +205,26 @@ oauthRouter.get('/authorize', (req, res) => {
   if (response_type !== 'code') { console.log(`[authorize] rejected: response_type=${response_type}`); return res.status(400).send('Unsupported response_type'); }
   if (!redirect_uri || !client.redirect_uris.includes(redirect_uri)) { console.log(`[authorize] rejected: redirect_uri mismatch`); return res.status(400).send('Invalid redirect_uri'); }
   if (code_challenge && resolvedChallengeMethod !== 'S256') { console.log(`[authorize] rejected: pkce method=${resolvedChallengeMethod}`); return res.status(400).send('Unsupported code_challenge_method, use S256'); }
-  if (!req.user) {
-    // Auto-issue guest token immediately — any HTML page breaks ChatGPT's OAuth
-    // session window. Users wanting their Google account should log in on the website
-    // first; that session cookie then carries through /authorize automatically.
-    const anonUser = getOrCreateAnonymousOAuthUser();
+  try {
+    const userId = req.user ? req.user.id : getOrCreateAnonymousOAuthUser().id;
+    const isGuest = !req.user;
     const code = randomToken();
     oauthCodes.set(code, {
-      client_id, redirect_uri, userId: anonUser.id,
+      client_id, redirect_uri, userId,
       scope: scope || 'openid profile email deals.read deals.write',
       code_challenge,
       resource,
       expiresAt: Date.now() + 10 * 60 * 1000
     });
-    const redirect = new URL(redirect_uri);
-    redirect.searchParams.set('code', code);
-    if (state) redirect.searchParams.set('state', state);
-    console.log(`[authorize] issuing guest code → ${redirect.toString().slice(0, 200)}`);
-    return res.redirect(redirect.toString());
+    const redirectUrl = new URL(redirect_uri);
+    redirectUrl.searchParams.set('code', code);
+    if (state) redirectUrl.searchParams.set('state', state);
+    console.log(`[authorize] issuing code guest=${isGuest} headersSent=${res.headersSent} → ${redirectUrl.toString().slice(0, 300)}`);
+    return res.redirect(redirectUrl.toString());
+  } catch (err) {
+    console.log(`[authorize] EXCEPTION: ${err}`);
+    return res.status(500).json({ error: String(err) });
   }
-  const code = randomToken();
-  oauthCodes.set(code, {
-    client_id, redirect_uri, userId: req.user.id,
-    scope: scope || 'openid profile email deals.read deals.write',
-    code_challenge,
-    resource,
-    expiresAt: Date.now() + 10 * 60 * 1000
-  });
-  const redirect = new URL(redirect_uri);
-  redirect.searchParams.set('code', code);
-  if (state) redirect.searchParams.set('state', state);
-  res.redirect(redirect.toString());
 });
 
 oauthRouter.post('/token', (req, res) => {
