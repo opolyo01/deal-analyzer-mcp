@@ -36,6 +36,11 @@ app.use(passport.session());
 
 // ── Routers ───────────────────────────────────────────────────────────────────
 
+app.use((req, _res, next) => {
+  if (req.path !== '/favicon.ico') console.log(`[req] ${req.method} ${req.path}`);
+  next();
+});
+
 // Rewrite root-path MCP requests (Claude.ai registers without /mcp suffix)
 app.use((req, _res, next) => {
   if (req.path !== '/') return next();
