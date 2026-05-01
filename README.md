@@ -169,7 +169,11 @@ Common environment variables:
 - `GOOGLE_CALLBACK_URL`
 - `DEFAULT_OAUTH_CLIENT_ID`
 - `DEFAULT_OAUTH_CLIENT_SECRET`
+- `DEFAULT_OAUTH_TOKEN_ENDPOINT_AUTH_METHOD` — `none`, `client_secret_post`, or `client_secret_basic`
 - `DEFAULT_OAUTH_REDIRECT_URIS`
+
+OAuth submission note:
+- For ChatGPT app submission, add the production redirect URI shown in the OpenAI app management page to `DEFAULT_OAUTH_REDIRECT_URIS` or your authorization server allowlist. This can differ from the redirect used during ChatGPT developer-mode MCP testing.
 
 ## Deployment
 

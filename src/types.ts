@@ -37,7 +37,8 @@ export interface OAuthCodeRecord {
   redirect_uri: string;
   userId: string;
   scope: string;
-  code_challenge: string;
+  code_challenge?: string;
+  resource?: string;
   expiresAt: number;
 }
 
@@ -45,6 +46,7 @@ export interface OAuthTokenRecord {
   userId: string;
   client_id: string;
   scope: string;
+  resource?: string;
   expiresAt?: number;
 }
 
