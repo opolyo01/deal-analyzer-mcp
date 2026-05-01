@@ -4,7 +4,7 @@ import session from 'express-session';
 import passport from 'passport';
 import fs from 'node:fs';
 import path from 'node:path';
-import { db, dbPath, getSavedDealById, getSavedDeals, saveDealRecord, isProUser, countDeals } from './db';
+import { db, dbPath, getSavedDealById, getSavedDeals, saveDealRecord, isProUser, countDeals, SqliteSessionStore } from './db';
 import { calculateDeal, parseListing, compareDeals } from './deal';
 import { billingRouter } from './billing';
 import { oauthRouter, sessionOrBearerUser, googleAuthConfigured, ensureDefaultClient } from './oauth';
@@ -25,6 +25,7 @@ app.use(express.json({ limit: '1mb', verify: (req: any, _res, buf) => { req.rawB
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(clientDistPath, { index: false }));
 app.use(session({
+  store: new SqliteSessionStore(),
   secret: process.env.SESSION_SECRET || 'dev-session-secret-change-me',
   resave: false,
   saveUninitialized: false,

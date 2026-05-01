@@ -1,6 +1,7 @@
 import path from 'node:path';
 import Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
+import { Store } from 'express-session';
 import type { AppUser, DealColumnRow, DealRow, JsonRecord, OAuthClient, OAuthCodeRecord, OAuthTokenRecord } from './types';
 
 const projectRoot = path.resolve(__dirname, '..');
@@ -161,6 +162,44 @@ export function setSubscription(userId: string, status: 'free' | 'pro', stripeCu
     db.prepare('UPDATE users SET subscriptionStatus = ?, stripeCustomerId = ? WHERE id = ?').run(status, stripeCustomerId, userId);
   } else {
     db.prepare('UPDATE users SET subscriptionStatus = ? WHERE id = ?').run(status, userId);
+  }
+}
+
+// SQLite-backed session store (survives restarts, works across Railway replicas sharing a volume)
+db.prepare(`CREATE TABLE IF NOT EXISTS sessions (
+  sid TEXT PRIMARY KEY,
+  data TEXT NOT NULL,
+  expires_at INTEGER NOT NULL
+)`).run();
+
+export class SqliteSessionStore extends Store {
+  private stmtCleanup = db.prepare('DELETE FROM sessions WHERE expires_at < ?');
+  private stmtGet = db.prepare('SELECT data FROM sessions WHERE sid = ? AND expires_at > ?');
+  private stmtSet = db.prepare('INSERT OR REPLACE INTO sessions (sid, data, expires_at) VALUES (?, ?, ?)');
+  private stmtDestroy = db.prepare('DELETE FROM sessions WHERE sid = ?');
+
+  constructor() {
+    super();
+    setInterval(() => this.stmtCleanup.run(Date.now()), 15 * 60 * 1000).unref();
+  }
+
+  get(sid: string, cb: (err: any, session?: any) => void) {
+    try {
+      const row = this.stmtGet.get(sid, Date.now()) as { data: string } | undefined;
+      cb(null, row ? JSON.parse(row.data) : null);
+    } catch (e) { cb(e); }
+  }
+
+  set(sid: string, session: any, cb?: (err?: any) => void) {
+    try {
+      const ttl = session?.cookie?.maxAge ? session.cookie.maxAge * 1000 : 24 * 3600 * 1000;
+      this.stmtSet.run(sid, JSON.stringify(session), Date.now() + ttl);
+      cb?.();
+    } catch (e) { cb?.(e); }
+  }
+
+  destroy(sid: string, cb?: (err?: any) => void) {
+    try { this.stmtDestroy.run(sid); cb?.(); } catch (e) { cb?.(e); }
   }
 }
 
