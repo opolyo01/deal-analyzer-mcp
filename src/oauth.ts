@@ -221,7 +221,7 @@ oauthRouter.get('/authorize', (req, res) => {
     const redirect = new URL(redirect_uri);
     redirect.searchParams.set('code', code);
     if (state) redirect.searchParams.set('state', state);
-    console.log(`[authorize] issuing guest code`);
+    console.log(`[authorize] issuing guest code → ${redirect.toString().slice(0, 200)}`);
     return res.redirect(redirect.toString());
   }
   const code = randomToken();

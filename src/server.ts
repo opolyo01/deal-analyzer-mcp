@@ -36,18 +36,30 @@ app.use(passport.session());
 
 // ── Routers ───────────────────────────────────────────────────────────────────
 
+// ── OAuth event log (last 50 events, queryable at /debug/oauth-log) ───────────
+const oauthEventLog: Array<{ ts: string; method: string; path: string; qs?: string; body?: string; status?: number; note?: string }> = [];
+export function oauthEvent(entry: typeof oauthEventLog[0]) {
+  entry.ts = new Date().toISOString();
+  oauthEventLog.unshift(entry);
+  if (oauthEventLog.length > 50) oauthEventLog.pop();
+}
+
 app.use((req, res, next) => {
   if (req.path === '/favicon.ico') return next();
   const oauthPaths = new Set(['/authorize', '/token', '/register', '/mcp']);
   const isOauth = oauthPaths.has(req.path) || req.path.includes('well-known');
-  const qs = isOauth && Object.keys(req.query).length ? ' ?' + new URLSearchParams(req.query as Record<string, string>).toString().slice(0, 200) : '';
-  const body = isOauth && req.method === 'POST' ? ` body=${JSON.stringify(req.body).slice(0, 200)}` : '';
-  console.log(`[req] ${req.method} ${req.path}${qs}${body}`);
+  const qs = isOauth && Object.keys(req.query).length ? new URLSearchParams(req.query as Record<string, string>).toString() : '';
+  const bodyStr = isOauth && req.method === 'POST' ? JSON.stringify(req.body) : '';
+  console.log(`[req] ${req.method} ${req.path}${qs ? ' ?' + qs.slice(0, 300) : ''}${bodyStr ? ' body=' + bodyStr.slice(0, 300) : ''}`);
+  if (isOauth) oauthEvent({ ts: '', method: req.method, path: req.path, qs: qs || undefined, body: bodyStr || undefined });
   const origSend = res.send.bind(res);
   (res as any).send = (chunk: any) => {
-    if (isOauth && res.statusCode >= 400) {
-      const preview = typeof chunk === 'string' ? chunk.slice(0, 150) : JSON.stringify(chunk).slice(0, 150);
-      console.log(`[res] ${req.method} ${req.path} → ${res.statusCode} ${preview}`);
+    const status = res.statusCode;
+    if (isOauth) {
+      const preview = typeof chunk === 'string' ? chunk.slice(0, 300) : JSON.stringify(chunk).slice(0, 300);
+      if (status >= 300) console.log(`[res] ${req.method} ${req.path} → ${status} ${preview}`);
+      const ev = oauthEventLog.find(e => e.method === req.method && e.path === req.path && !e.status);
+      if (ev) { ev.status = status; ev.note = preview; }
     }
     return origSend(chunk);
   };
@@ -92,6 +104,7 @@ app.get(['/agent', '/agent.html'], (_req, res) => res.redirect('/'));
 app.use(express.static(publicDir, { index: false }));
 
 app.get('/health', (_req, res) => res.json({ ok: true, app: APP_NAME, version: APP_VERSION }));
+app.get('/debug/oauth-log', (_req, res) => res.json(oauthEventLog));
 app.get('/debug/auth', (req, res) => {
   const auth = typeof req.headers.authorization === 'string' ? req.headers.authorization : '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
