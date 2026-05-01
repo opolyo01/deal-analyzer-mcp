@@ -99,6 +99,16 @@ export function getUserById(id: string): AppUser | null {
   return (db.prepare('SELECT * FROM users WHERE id = ?').get(id) as AppUser | undefined) || null;
 }
 
+export function getOrCreateAnonymousOAuthUser(): AppUser {
+  const ANON_ID = 'oauth-anonymous';
+  let user = db.prepare('SELECT * FROM users WHERE id = ?').get(ANON_ID) as AppUser | undefined;
+  if (!user) {
+    user = { id: ANON_ID, googleId: null, email: null, displayName: 'Anonymous' };
+    db.prepare('INSERT OR IGNORE INTO users (id, googleId, email, displayName) VALUES (?, ?, ?, ?)').run(ANON_ID, null, null, 'Anonymous');
+  }
+  return user;
+}
+
 export function createUser(googleId: string, email: string | null, displayName: string): AppUser {
   let user = db.prepare('SELECT * FROM users WHERE googleId = ?').get(googleId) as AppUser | undefined;
   if (!user) {
