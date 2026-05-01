@@ -18,7 +18,7 @@ export const tools = [
     title: 'Analyze real estate deal',
     description: 'Underwrite a rental property and score it 1-10. Only price is required — rent, taxes, and insurance are estimated when omitted. Accepts: price, rent, taxes (annual), insurance (annual), hoa (monthly), rentComps, city/state/address, otherMonthlyCosts, vacancyRate, repairsRate, capexRate, managementRate, downPaymentPercent, rate, termYears, propertyType, label. Returns score, recommendation (BUY/HOLD/PASS), monthly cash flow, cap rate, cash-on-cash return, break-even rent, estimated inputs, market-rent range, and risks/strengths.',
     securitySchemes: readOnlyToolAuth,
-    annotations: { title: 'Analyze real estate deal', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    annotations: { title: 'Analyze real estate deal', readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     inputSchema: { type: 'object', additionalProperties: true, properties: { price: { type: 'number', description: 'Purchase price in dollars' }, rent: { type: 'number', description: 'Monthly rent in dollars. Estimated from market heuristics or rentComps if omitted.' }, rentComps: { type: 'array', description: 'Optional current rental comps with rent, beds, baths, sqft, distanceMiles, source, and address', items: { type: 'object', additionalProperties: true } }, taxes: { type: 'number', description: 'Annual property taxes in dollars. Estimated from location if omitted.' }, insurance: { type: 'number', description: 'Annual insurance in dollars. Estimated from property type and location if omitted.' }, hoa: { type: 'number', description: 'Monthly HOA fee' }, downPaymentPercent: { type: 'number', description: 'Down payment as decimal, e.g. 0.20 for 20%' }, rate: { type: 'number', description: 'Annual interest rate as decimal, e.g. 0.065' }, propertyType: { type: 'string' }, label: { type: 'string' }, address: { type: 'string' }, city: { type: 'string' }, state: { type: 'string', description: 'Two-letter state code' } }, required: ['price'] }
   },
   {
@@ -26,7 +26,7 @@ export const tools = [
     title: 'Parse listing',
     description: 'Extract fields (price, rent, taxes, HOA, address, property type, photo) from a Zillow or Redfin URL or raw listing text.',
     securitySchemes: readOnlyToolAuth,
-    annotations: { title: 'Parse listing', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    annotations: { title: 'Parse listing', readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     inputSchema: { type: 'object', properties: { url: { type: 'string' }, listingText: { type: 'string' } } }
   },
   {
@@ -34,7 +34,7 @@ export const tools = [
     title: 'Parse and analyze listing',
     description: 'Parse a Zillow or Redfin listing URL or text, then immediately underwrite it. Pass any additional known fields (rent, taxes, etc.) alongside the url to override parsed values. Best single tool when the user shares a listing link.',
     securitySchemes: readOnlyToolAuth,
-    annotations: { title: 'Parse and analyze listing', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    annotations: { title: 'Parse and analyze listing', readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     inputSchema: { type: 'object', additionalProperties: true, properties: { url: { type: 'string' }, listingText: { type: 'string' } } }
   },
   {
@@ -42,7 +42,7 @@ export const tools = [
     title: 'Compare multiple deals',
     description: 'Rank multiple deals side by side by score and cash flow. Each deal in the array accepts the same fields as analyzeDeal.',
     securitySchemes: readOnlyToolAuth,
-    annotations: { title: 'Compare multiple deals', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    annotations: { title: 'Compare multiple deals', readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     inputSchema: { type: 'object', properties: { deals: { type: 'array', minItems: 2, items: { type: 'object' } } }, required: ['deals'] }
   },
   {
@@ -58,7 +58,7 @@ export const tools = [
     title: 'Get saved deals',
     description: 'Retrieve all saved deals for the currently signed-in user.',
     securitySchemes: dealsReadAuth,
-    annotations: { title: 'Get saved deals', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    annotations: { title: 'Get saved deals', readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     inputSchema: { type: 'object', properties: {} }
   }
 ];
