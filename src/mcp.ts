@@ -225,6 +225,10 @@ function mcpSend(res: express.Response, payload: unknown, sessionId?: string) {
 export const mcpRouter = express.Router();
 
 mcpRouter.get('/mcp', (req, res) => {
+  const origin = baseUrl(req);
+  const metaUrl = `${origin}/mcp/.well-known/oauth-protected-resource`;
+  res.setHeader('Link', `<${metaUrl}>; rel="oauth-protected-resource"`);
+  res.setHeader('WWW-Authenticate', `Bearer realm="${origin}", resource_metadata="${metaUrl}"`);
   const sessionId = (req.headers['mcp-session-id'] as string) || uuidv4();
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
