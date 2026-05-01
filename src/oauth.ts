@@ -199,11 +199,12 @@ oauthRouter.get('/authorize', (req, res) => {
   const code_challenge = queryParam(req.query.code_challenge);
   const code_challenge_method = queryParam(req.query.code_challenge_method);
   const client = oauthClients.get(client_id);
-  console.log(`[authorize] client=${client_id} found=${!!client} redirect_uri=${redirect_uri} resource=${resource} registered=${JSON.stringify(client?.redirect_uris)}`);
-  if (!client) return res.status(400).send('Unknown client_id');
-  if (response_type !== 'code') return res.status(400).send('Unsupported response_type');
-  if (!redirect_uri || !client.redirect_uris.includes(redirect_uri)) return res.status(400).send('Invalid redirect_uri');
-  if (code_challenge && code_challenge_method !== 'S256') return res.status(400).send('Unsupported code_challenge_method, use S256');
+  const resolvedChallengeMethod = code_challenge_method || 'S256';
+  console.log(`[authorize] client=${client_id} found=${!!client} response_type=${response_type} redirect_uri=${redirect_uri} resource=${resource} pkce=${code_challenge ? resolvedChallengeMethod : 'none'} registered=${JSON.stringify(client?.redirect_uris)}`);
+  if (!client) { console.log('[authorize] rejected: unknown client'); return res.status(400).send('Unknown client_id'); }
+  if (response_type !== 'code') { console.log(`[authorize] rejected: response_type=${response_type}`); return res.status(400).send('Unsupported response_type'); }
+  if (!redirect_uri || !client.redirect_uris.includes(redirect_uri)) { console.log(`[authorize] rejected: redirect_uri mismatch`); return res.status(400).send('Invalid redirect_uri'); }
+  if (code_challenge && resolvedChallengeMethod !== 'S256') { console.log(`[authorize] rejected: pkce method=${resolvedChallengeMethod}`); return res.status(400).send('Unsupported code_challenge_method, use S256'); }
   if (!req.user) {
     // Auto-issue guest token immediately — any HTML page breaks ChatGPT's OAuth
     // session window. Users wanting their Google account should log in on the website
