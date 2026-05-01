@@ -41,10 +41,13 @@ app.use((req, _res, next) => {
   next();
 });
 
-// Rewrite root-path MCP requests (Claude.ai registers without /mcp suffix)
+// Rewrite root-path requests (Claude.ai registers without /mcp suffix;
+// ChatGPT sends token exchange to POST / instead of POST /token)
 app.use((req, _res, next) => {
   if (req.path !== '/') return next();
-  if (
+  if (req.method === 'POST' && req.body?.grant_type) {
+    req.url = '/token';
+  } else if (
     ['POST', 'DELETE'].includes(req.method) ||
     (req.method === 'GET' && req.headers.accept?.includes('application/json'))
   ) {
