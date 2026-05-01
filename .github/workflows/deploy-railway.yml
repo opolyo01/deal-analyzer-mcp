@@ -24,17 +24,17 @@ jobs:
       RAILWAY_ENVIRONMENT_NAME: ${{ secrets.RAILWAY_ENVIRONMENT_NAME }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Validate deployment secrets
         run: |
           if [ -z "${RAILWAY_TOKEN:-}" ]; then
-            echo "Missing required GitHub secret: RAILWAY_TOKEN"
+            echo "::error::Missing required GitHub secret: RAILWAY_TOKEN"
             exit 1
           fi
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
