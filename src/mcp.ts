@@ -41,7 +41,7 @@ export const tools = [
     name: 'saveDeal',
     title: 'Save deal',
     description: "Persist a deal to the signed-in user's account so it appears on the dashboard. Accepts the same fields as analyzeDeal. Requires the user to be authenticated.",
-    annotations: { title: 'Save deal', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    annotations: { title: 'Save deal', readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     inputSchema: { type: 'object', additionalProperties: true, properties: { label: { type: 'string' }, price: { type: 'number' }, rent: { type: 'number' } }, required: ['price'] }
   },
   {

@@ -1,221 +1,168 @@
 {
-  "app_name": "Deal Analyzer",
-  "app_subtitle": "Analyze rental property deals and compare investment scenarios.",
-  "app_description": "Deal Analyzer is a US-focused real estate investing app for quickly underwriting rental properties inside ChatGPT. It can estimate missing inputs, score deals with a BUY / HOLD / PASS recommendation, parse Zillow or Redfin listings, compare multiple properties side by side, and optionally save deals to a signed-in account for later review.",
-  "category": "Finance",
-  "developer_name": "Oleg Polyakov",
-  "website_url": "https://deal-analyzer-mcp-production.up.railway.app",
-  "support_email": "opolyo01@gmail.com",
-  "privacy_policy_url": "https://deal-analyzer-mcp-production.up.railway.app/privacy",
-  "terms_of_service_url": "https://deal-analyzer-mcp-production.up.railway.app/terms",
-  "countries_supported": [
-    "US"
-  ],
-  "mcp_url": "https://deal-analyzer-mcp-production.up.railway.app/mcp",
-  "healthcheck_url": "https://deal-analyzer-mcp-production.up.railway.app/health",
-  "app_manifest_url": "https://deal-analyzer-mcp-production.up.railway.app/.well-known/app.json",
-  "domain_verification_url": "https://deal-analyzer-mcp-production.up.railway.app/.well-known/openai-apps-challenge",
-  "authentication": {
-    "type": "oauth",
-    "issuer": "https://deal-analyzer-mcp-production.up.railway.app",
-    "authorization_url": "https://deal-analyzer-mcp-production.up.railway.app/authorize",
-    "token_url": "https://deal-analyzer-mcp-production.up.railway.app/token",
-    "registration_url": "https://deal-analyzer-mcp-production.up.railway.app/register",
-    "scopes": [
-      "openid",
-      "profile",
-      "email",
-      "deals.read",
-      "deals.write"
-    ],
-    "pkce_required": true,
-    "token_endpoint_auth_methods_supported": [
-      "none",
-      "client_secret_post",
-      "client_secret_basic"
-    ],
-    "notes": "Core read-only tools work without a signed-in account in production. Saved-deal features require sign-in."
+  "$schema": "https://developers.openai.com/apps-sdk/schemas/chatgpt-app-submission.v1.json",
+  "schema_version": 1,
+  "app_info": {
+    "display_name": "Deal Analyzer",
+    "subtitle": "Analyze rental deals",
+    "description": "Deal Analyzer helps users underwrite U.S. rental properties, estimate missing rent and expense inputs, parse Zillow or Redfin listings, compare multiple deals, and optionally save deals to a signed-in account for later review inside ChatGPT.",
+    "category": "FINANCE"
   },
-  "tool_justifications": [
-    {
-      "name": "analyzeDeal",
-      "title": "Analyze real estate deal",
-      "read_only": true,
-      "read_only_justification": "This tool performs calculations on user-provided property inputs and returns an underwriting result. It does not persist or modify data.",
-      "open_world": false,
-      "open_world_justification": "This tool does not call external systems. It computes results from the provided arguments and internal heuristics.",
-      "destructive": false,
-      "destructive_justification": "This tool does not delete or irreversibly modify any user data."
+  "tools": {
+    "analyzeDeal": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only calculates underwriting metrics from the provided inputs and returns the result without saving or changing records.",
+        "open_world_justification": "Does not fetch or update external systems and operates only on the arguments passed to the tool.",
+        "destructive_justification": "Does not delete, overwrite, send, or otherwise perform irreversible actions."
+      }
     },
-    {
-      "name": "parseListing",
-      "title": "Parse listing",
-      "read_only": true,
-      "read_only_justification": "This tool extracts listing fields from a URL or pasted listing text and returns structured data without changing any state.",
-      "open_world": true,
-      "open_world_justification": "When given a Zillow or Redfin URL, this tool fetches public listing content from an external website.",
-      "destructive": false,
-      "destructive_justification": "This tool does not delete or irreversibly modify any user data."
+    "parseListing": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only extracts structured listing fields from pasted text or a listing page and returns them without modifying stored data.",
+        "open_world_justification": "Fetches public listing pages when a URL is provided, so it reads from external websites outside the app's private system.",
+        "destructive_justification": "Does not delete, overwrite, or perform irreversible actions in the app or on external services."
+      }
     },
-    {
-      "name": "analyzeListing",
-      "title": "Parse and analyze listing",
-      "read_only": true,
-      "read_only_justification": "This tool parses listing content and runs underwriting on the extracted values. It does not persist or modify data.",
-      "open_world": true,
-      "open_world_justification": "When given a Zillow or Redfin URL, this tool fetches public listing content from an external website before analyzing it.",
-      "destructive": false,
-      "destructive_justification": "This tool does not delete or irreversibly modify any user data."
+    "analyzeListing": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only parses listing data and runs underwriting calculations before returning the result without saving records.",
+        "open_world_justification": "Fetches public listing pages when a URL is provided, so it reads from external websites before analyzing the property.",
+        "destructive_justification": "Does not delete, overwrite, or carry out irreversible actions."
+      }
     },
-    {
-      "name": "compareDeals",
-      "title": "Compare multiple deals",
-      "read_only": true,
-      "read_only_justification": "This tool ranks multiple hypothetical or user-provided deals and returns a comparison only.",
-      "open_world": false,
-      "open_world_justification": "This tool compares the provided inputs locally and does not depend on external APIs or public systems.",
-      "destructive": false,
-      "destructive_justification": "This tool does not delete or irreversibly modify any user data."
+    "compareDeals": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only compares the provided deal inputs and returns ranked analyses without changing any stored data.",
+        "open_world_justification": "Does not contact external services and only computes a comparison from the supplied arguments.",
+        "destructive_justification": "Does not delete, overwrite, send, or otherwise perform irreversible actions."
+      }
     },
-    {
-      "name": "saveDeal",
-      "title": "Save deal",
-      "read_only": false,
-      "read_only_justification": "This tool writes a deal and its computed analysis to the signed-in user's account for later retrieval.",
-      "open_world": false,
-      "open_world_justification": "This tool writes to the app's own persistence layer and does not call third-party APIs.",
-      "destructive": false,
-      "destructive_justification": "This tool adds a record but does not delete existing data."
+    "saveDeal": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Writes a saved deal record and computed analysis to the signed-in user's private account.",
+        "open_world_justification": "Only writes to the app's private database and does not publish to public internet state or third-party systems.",
+        "destructive_justification": "Can overwrite an existing saved deal when the same listing URL or address and price already exist for that user."
+      }
     },
-    {
-      "name": "getDeals",
-      "title": "Get saved deals",
-      "read_only": true,
-      "read_only_justification": "This tool retrieves deals already saved by the signed-in user and does not modify records.",
-      "open_world": false,
-      "open_world_justification": "This tool reads from the app's own persistence layer and does not call third-party APIs.",
-      "destructive": false,
-      "destructive_justification": "This tool does not delete or irreversibly modify any user data."
+    "getDeals": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only reads saved deals for the signed-in user and returns them without modifying records.",
+        "open_world_justification": "Only reads from the app's private database and does not access public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, or perform irreversible actions."
+      }
     }
-  ],
-  "positive_test_cases": [
+  },
+  "test_cases": [
     {
-      "scenario": "Analyze a straightforward rental property with user-supplied rent and expenses",
-      "user_prompt": "Use Deal Analyzer to analyze a rental property with price 250000, rent 2200, taxes 2400 per year, insurance 1200 per year, HOA 0, city Phoenix, state AZ.",
-      "expected_tool": "analyzeDeal",
-      "expected_output": {
-        "must_include": [
-          "summary.score",
-          "summary.recommendation",
-          "summary.monthlyCashFlow",
-          "summary.breakEvenRent",
-          "input.price",
-          "input.rent"
-        ],
-        "notes": "The tool should return a structured underwriting result with score, recommendation, cash flow, and break-even rent."
-      }
+      "description": "Analyze a rental property with explicit rent and annual expenses.",
+      "user_prompt": "Analyze a rental property with price 250000, rent 2200, taxes 2400 per year, insurance 1200 per year, HOA 0, city Phoenix, state AZ.",
+      "file_attachment_urls": null,
+      "tools_triggered": "analyzeDeal",
+      "expected_output": "Returns a scored underwriting result with a BUY, HOLD, or PASS recommendation, monthly cash flow, and break-even rent.",
+      "expected_output_url": null
     },
     {
-      "scenario": "Analyze a deal when only the purchase price and location are known",
+      "description": "Analyze a deal when the user only knows the purchase price and location.",
       "user_prompt": "Analyze a rental deal for a $310,000 single-family home in Tampa, FL. I only know the price and location.",
-      "expected_tool": "analyzeDeal",
-      "expected_output": {
-        "must_include": [
-          "summary.score",
-          "summary.recommendation",
-          "summary.estimatedInputs",
-          "summary.breakEvenRent",
-          "input.price"
-        ],
-        "notes": "The tool should estimate missing rent and expense inputs and mark estimated values in the structured response."
-      }
+      "file_attachment_urls": null,
+      "tools_triggered": "analyzeDeal",
+      "expected_output": "Estimates missing rent, tax, and insurance inputs and returns a scored underwriting result with estimated-input flags.",
+      "expected_output_url": null
     },
     {
-      "scenario": "Parse a pasted listing description into structured fields",
-      "user_prompt": "Use Deal Analyzer to parse this listing text: 123 Main St, Columbus, OH 43215. Price: $189,900. Estimated rent: $1,650/month. Taxes: $2,200/year. HOA: $150/month. 2 bed, 1 bath condo.",
-      "expected_tool": "parseListing",
-      "expected_output": {
-        "must_include": [
-          "price",
-          "rent",
-          "taxes",
-          "hoa",
-          "address",
-          "propertyType"
-        ],
-        "notes": "The tool should return structured listing fields extracted from freeform text."
-      }
+      "description": "Parse a pasted listing description into structured listing fields.",
+      "user_prompt": "Parse this listing text: 123 Main St, Columbus, OH 43215. Price: $189,900. Estimated rent: $1,650/month. Taxes: $2,200/year. HOA: $150/month. 2 bed, 1 bath condo.",
+      "file_attachment_urls": null,
+      "tools_triggered": "parseListing",
+      "expected_output": "Returns structured fields such as address, price, rent, taxes, HOA, beds, baths, and property type extracted from the text.",
+      "expected_output_url": null
     },
     {
-      "scenario": "Parse and immediately analyze a pasted listing",
+      "description": "Parse and analyze a pasted listing in one step.",
       "user_prompt": "Analyze this listing: 456 Oak Ave, Indianapolis, IN 46203. Price $210,000. Rent $1,850/month. Taxes $2,400/year. Insurance $1,100/year. 3 bed 2 bath single-family home.",
-      "expected_tool": "analyzeListing",
-      "expected_output": {
-        "must_include": [
-          "summary.score",
-          "summary.recommendation",
-          "summary.monthlyCashFlow",
-          "parsedListing",
-          "input.price",
-          "input.rent"
-        ],
-        "notes": "The tool should return both the underwriting result and the parsed listing details."
-      }
+      "file_attachment_urls": null,
+      "tools_triggered": "analyzeListing",
+      "expected_output": "Returns the parsed listing details together with a scored underwriting result and recommendation.",
+      "expected_output_url": null
     },
     {
-      "scenario": "Compare two candidate deals side by side",
-      "user_prompt": "Compare these two rental deals with Deal Analyzer: Deal A price 220000 rent 1900 taxes 2400 insurance 1000 in Cleveland OH; Deal B price 275000 rent 2400 taxes 3100 insurance 1200 in Kansas City MO.",
-      "expected_tool": "compareDeals",
-      "expected_output": {
-        "must_include": [
-          "analyses",
-          "analyses[0].rank",
-          "analyses[0].analysis.summary.score",
-          "analyses[1].analysis.summary.score"
-        ],
-        "notes": "The tool should return both deals ranked by score and cash flow."
-      }
+      "description": "Compare two rental deals side by side.",
+      "user_prompt": "Compare these two rental deals: Deal A price 220000 rent 1900 taxes 2400 insurance 1000 in Cleveland OH; Deal B price 275000 rent 2400 taxes 3100 insurance 1200 in Kansas City MO.",
+      "file_attachment_urls": null,
+      "tools_triggered": "compareDeals",
+      "expected_output": "Returns both deals ranked by score and cash flow so the user can see which opportunity looks stronger.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Attempt to save a deal from ChatGPT.",
+      "user_prompt": "Save this deal for me: price 250000, rent 2200, taxes 2400, insurance 1200, address 123 Main St, Phoenix AZ.",
+      "file_attachment_urls": null,
+      "tools_triggered": "saveDeal",
+      "expected_output": "If the app is connected, saves or updates the user's private deal record; otherwise returns an authentication-required message.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Load saved deals for the current user.",
+      "user_prompt": "Show my saved deals.",
+      "file_attachment_urls": null,
+      "tools_triggered": "getDeals",
+      "expected_output": "If the app is connected, returns the user's saved deals; otherwise returns a reconnect or authentication message.",
+      "expected_output_url": null
     }
   ],
   "negative_test_cases": [
     {
-      "scenario": "Prompt is about a different consumer domain",
+      "description": "Do not trigger for unrelated travel booking requests.",
       "user_prompt": "Book me a hotel in Miami for next weekend.",
-      "why_it_should_not_trigger": "The app only analyzes real estate investment deals and does not handle travel bookings."
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked because travel booking is outside its supported real estate analysis workflows.",
+      "expected_output_url": null
     },
     {
-      "scenario": "Prompt requests deletion, but no MCP delete tool is exposed",
+      "description": "Do not trigger for deleting saved deals because no MCP delete tool is exposed.",
       "user_prompt": "Delete all of my saved deals.",
-      "why_it_should_not_trigger": "The MCP server does not expose a delete tool, so the app should not be selected for this request."
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked because the MCP server does not expose a delete-deal tool.",
+      "expected_output_url": null
     },
     {
-      "scenario": "Prompt is general conversation rather than deal analysis",
-      "user_prompt": "How are you today?",
-      "why_it_should_not_trigger": "The prompt does not request real estate underwriting, listing parsing, or deal comparison."
+      "description": "Do not trigger for unrelated personal productivity questions.",
+      "user_prompt": "What meetings do I have tomorrow?",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked because the request is outside rental analysis, listing parsing, and saved-deal workflows.",
+      "expected_output_url": null
     }
-  ],
-  "testing_instructions": {
-    "connection_steps": [
-      "Add the remote MCP server URL: https://deal-analyzer-mcp-production.up.railway.app/mcp",
-      "Verify the domain token served at /.well-known/openai-apps-challenge",
-      "Scan tools from the MCP server in production"
-    ],
-    "reviewer_account_requirements": "No reviewer account should be necessary for the five positive test cases above. The saveDeal and getDeals tools require sign-in and should only be tested if separate review credentials are provided.",
-    "important_notes": [
-      "This app is US-focused. Zillow and Redfin parsing is designed for US listing formats.",
-      "Core value is in read-only underwriting and comparison. Saved-deal features are optional account features.",
-      "Production has been verified to allow unauthenticated read-only MCP access and to expose tool annotations in tools/list."
-    ]
-  },
-  "release_notes": "Deal Analyzer v1.0 - Initial release. Features: analyze rental deals, estimate missing underwriting inputs, parse Zillow and Redfin listings, analyze pasted listing text, compare multiple deals side by side, and optionally save deals to a signed-in dashboard.",
-  "pre_submit_blockers": [
-    "Verify in ChatGPT developer mode that tools/list and the five positive test cases behave the same way as the production curl checks.",
-    "If you want OpenAI to test saveDeal or getDeals, provide a separate review account that can complete Google OAuth without MFA or additional verification."
-  ],
-  "sources": [
-    "Codebase: src/mcp.ts, src/oauth.ts, src/server.ts, public/privacy.html, public/terms.html",
-    "Production metadata: /.well-known/app.json, /.well-known/oauth-authorization-server, /.well-known/openai-apps-challenge",
-    "OpenAI Help Center: https://help.openai.com/en/articles/20001040-submitting-apps-to-the-chatgpt-app-directory",
-    "Submission field guidance reference: https://alpic.ai/blog/how-to-submit-your-app-to-the-chatgpt-directory"
   ]
 }
