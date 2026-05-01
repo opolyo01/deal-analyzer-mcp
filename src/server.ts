@@ -36,8 +36,21 @@ app.use(passport.session());
 
 // ── Routers ───────────────────────────────────────────────────────────────────
 
-app.use((req, _res, next) => {
-  if (req.path !== '/favicon.ico') console.log(`[req] ${req.method} ${req.path}`);
+app.use((req, res, next) => {
+  if (req.path === '/favicon.ico') return next();
+  const oauthPaths = new Set(['/authorize', '/token', '/register', '/mcp']);
+  const isOauth = oauthPaths.has(req.path) || req.path.includes('well-known');
+  const qs = isOauth && Object.keys(req.query).length ? ' ?' + new URLSearchParams(req.query as Record<string, string>).toString().slice(0, 200) : '';
+  const body = isOauth && req.method === 'POST' ? ` body=${JSON.stringify(req.body).slice(0, 200)}` : '';
+  console.log(`[req] ${req.method} ${req.path}${qs}${body}`);
+  const origSend = res.send.bind(res);
+  (res as any).send = (chunk: any) => {
+    if (isOauth && res.statusCode >= 400) {
+      const preview = typeof chunk === 'string' ? chunk.slice(0, 150) : JSON.stringify(chunk).slice(0, 150);
+      console.log(`[res] ${req.method} ${req.path} → ${res.statusCode} ${preview}`);
+    }
+    return origSend(chunk);
+  };
   next();
 });
 
