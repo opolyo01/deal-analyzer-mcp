@@ -157,8 +157,16 @@ oauthRouter.get('/authorize', (req, res) => {
 
 oauthRouter.post('/token', (req, res) => {
   const grantType = req.body.grant_type;
-  const clientId = req.body.client_id;
   const clientSecret = req.body.client_secret;
+
+  // Some clients (e.g. OpenAI's platform) omit client_id from the token request body.
+  // For auth-code grants, fall back to the client_id stored in the code record.
+  let clientId = req.body.client_id;
+  if (!clientId && grantType === 'authorization_code') {
+    const peek = oauthCodes.get(req.body.code);
+    clientId = peek?.client_id;
+  }
+
   const client = oauthClients.get(clientId);
   console.log(`[token] grant=${grantType} client=${clientId} client_found=${!!client}`);
   if (!client) return res.status(400).json({ error: 'invalid_client', error_description: `Unknown client: ${clientId}` });
