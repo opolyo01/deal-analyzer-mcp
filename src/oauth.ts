@@ -2,7 +2,7 @@ import express, { type Request } from 'express';
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { v4 as uuidv4 } from 'uuid';
-import { db, oauthClients, oauthCodes, oauthAccessTokens, oauthRefreshTokens, getUserById, createUser } from './db';
+import { db, oauthClients, oauthCodes, oauthAccessTokens, oauthRefreshTokens, getUserById, createUser, getOrCreateAnonymousOAuthUser } from './db';
 import { baseUrl, queryParam, randomToken, sha256base64url, configuredSecret, PUBLIC_BASE_URL } from './utils';
 import type { AppUser } from './types';
 
@@ -153,9 +153,51 @@ oauthRouter.get('/authorize', (req, res) => {
   if (response_type !== 'code') return res.status(400).send('Unsupported response_type');
   if (!redirect_uri || !client.redirect_uris.includes(redirect_uri)) return res.status(400).send('Invalid redirect_uri');
   if (code_challenge && code_challenge_method !== 'S256') return res.status(400).send('Unsupported code_challenge_method, use S256');
+  // Guest authorization: issue code for anonymous user without requiring Google login
+  if (queryParam(req.query.guest) === '1') {
+    const anonUser = getOrCreateAnonymousOAuthUser();
+    const code = randomToken();
+    oauthCodes.set(code, {
+      client_id, redirect_uri, userId: anonUser.id,
+      scope: scope || 'openid profile email deals.read deals.write',
+      code_challenge, expiresAt: Date.now() + 10 * 60 * 1000
+    });
+    const redirect = new URL(redirect_uri);
+    redirect.searchParams.set('code', code);
+    if (state) redirect.searchParams.set('state', state);
+    return res.redirect(redirect.toString());
+  }
+
   if (!req.user) {
-    req.session.returnTo = req.originalUrl;
-    return res.redirect('/auth/google');
+    // Show consent page so users can choose Google login or guest access
+    const authUrl = req.originalUrl;
+    const guestUrl = `${req.originalUrl}${req.originalUrl.includes('?') ? '&' : '?'}guest=1`;
+    const clientName = (client as any).client_name || client_id;
+    return res.type('html').send(`<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Authorize – Deal Analyzer</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
+  .card{background:#fff;border-radius:12px;box-shadow:0 2px 16px rgba(0,0,0,.1);padding:40px 36px;max-width:380px;width:100%;text-align:center}
+  h1{font-size:1.25rem;margin:0 0 8px}
+  p{color:#555;font-size:.9rem;margin:0 0 28px}
+  .btn{display:block;width:100%;padding:12px;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer;text-decoration:none;border:none;margin-bottom:12px;box-sizing:border-box}
+  .btn-google{background:#4285f4;color:#fff}
+  .btn-guest{background:#f0f0f0;color:#333}
+  .btn:hover{opacity:.9}
+  .scope{font-size:.78rem;color:#888;margin-top:20px}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Authorize Deal Analyzer</h1>
+  <p><strong>${clientName}</strong> is requesting access to analyze and manage real estate deals.</p>
+  ${googleAuthConfigured ? `<a class="btn btn-google" href="/auth/google?returnTo=${encodeURIComponent(authUrl)}">Sign in with Google</a>` : ''}
+  <a class="btn btn-guest" href="${guestUrl}">Continue as Guest</a>
+  <div class="scope">Requested: ${scope || 'deals.read deals.write'}</div>
+</div>
+</body></html>`);
   }
   const code = randomToken();
   oauthCodes.set(code, {
@@ -215,6 +257,7 @@ oauthRouter.post('/token', (req, res) => {
 // Auth routes (Google OAuth for web)
 oauthRouter.get('/auth/google', (req, res, next) => {
   if (!googleAuthConfigured) return res.status(503).send('Google OAuth is not configured');
+  if (req.query.returnTo) req.session.returnTo = String(req.query.returnTo);
   return passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
 });
 oauthRouter.get('/auth/google/callback', (req, res, next) => {
