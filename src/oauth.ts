@@ -2,7 +2,7 @@ import express, { type Request } from 'express';
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { v4 as uuidv4 } from 'uuid';
-import { db, oauthClients, oauthCodes, oauthAccessTokens, oauthRefreshTokens, getUserById, createUser, getOrCreateAnonymousOAuthUser } from './db';
+import { db, oauthClients, oauthCodes, oauthAccessTokens, oauthRefreshTokens, getUserById, createUser } from './db';
 import { baseUrl, queryParam, randomToken, sha256base64url, configuredSecret, PUBLIC_BASE_URL } from './utils';
 import type { AppUser } from './types';
 
@@ -153,10 +153,13 @@ oauthRouter.get('/authorize', (req, res) => {
   if (response_type !== 'code') return res.status(400).send('Unsupported response_type');
   if (!redirect_uri || !client.redirect_uris.includes(redirect_uri)) return res.status(400).send('Invalid redirect_uri');
   if (code_challenge && code_challenge_method !== 'S256') return res.status(400).send('Unsupported code_challenge_method, use S256');
-  const userId = req.user ? req.user.id : getOrCreateAnonymousOAuthUser().id;
+  if (!req.user) {
+    req.session.returnTo = req.originalUrl;
+    return res.redirect('/auth/google');
+  }
   const code = randomToken();
   oauthCodes.set(code, {
-    client_id, redirect_uri, userId,
+    client_id, redirect_uri, userId: req.user.id,
     scope: scope || 'openid profile email deals.read deals.write',
     code_challenge, expiresAt: Date.now() + 10 * 60 * 1000
   });
