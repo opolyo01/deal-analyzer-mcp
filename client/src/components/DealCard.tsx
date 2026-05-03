@@ -21,12 +21,12 @@ export function DealCard({ deal, index, selected, onToggleSelect, onDelete, isDe
   const detailHref = `/add?deal=${deal.id}`;
 
   return (
-    <article className={`surface-panel p-5 transition ${selected ? 'ring-2 ring-green/20' : ''}`}>
+    <article className={`surface-panel p-5 transition-all ${selected ? 'ring-1 ring-gold/30 border-gold/20' : ''}`}>
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div className="flex gap-3">
+        <div className="flex gap-4">
           <input
             type="checkbox"
-            className="mt-1 h-5 w-5 accent-[var(--green)]"
+            className="mt-1.5 h-4 w-4 rounded accent-[#d49838]"
             checked={selected}
             onChange={() => onToggleSelect(deal.id)}
             aria-label={`Select ${getDealLabel(deal)} for comparison`}
@@ -34,12 +34,12 @@ export function DealCard({ deal, index, selected, onToggleSelect, onDelete, isDe
 
           <div>
             <div className="flex flex-wrap items-center gap-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted/70">Rank {index + 1}</p>
-              <p className="text-sm text-muted">{formatDate(deal.createdAt)}</p>
+              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-gold/60">#{String(index + 1).padStart(2, '0')}</span>
+              <span className="font-mono text-xs text-muted/60">{formatDate(deal.createdAt)}</span>
             </div>
 
-            <h3 className="mt-1 text-xl font-semibold tracking-tight">
-              <Link to={detailHref} className="hover:text-blue">
+            <h3 className="mt-1.5 font-display text-xl font-700 tracking-tight text-ink">
+              <Link to={detailHref} className="hover:text-gold transition-colors">
                 {getDealLabel(deal)}
               </Link>
             </h3>
@@ -47,11 +47,11 @@ export function DealCard({ deal, index, selected, onToggleSelect, onDelete, isDe
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 xl:flex-col xl:items-end">
+        <div className="flex flex-wrap items-center gap-2 xl:flex-col xl:items-end">
           <ScoreBadge recommendation={summary.recommendation} score={summary.score} />
           <Link
             to={detailHref}
-            className="rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-ink hover:border-muted/40"
+            className="rounded-lg border border-line px-4 py-2 text-xs font-medium text-muted hover:border-line/80 hover:text-ink"
           >
             Open analysis
           </Link>
@@ -59,14 +59,14 @@ export function DealCard({ deal, index, selected, onToggleSelect, onDelete, isDe
             type="button"
             onClick={() => onDelete(deal.id)}
             disabled={isDeleting}
-            className="rounded-full border border-red/20 bg-white px-4 py-2 text-sm font-semibold text-red hover:border-red/40"
+            className="rounded-lg border border-red/20 px-4 py-2 text-xs font-medium text-red/70 hover:border-red/40 hover:text-red"
           >
             {isDeleting ? 'Deleting...' : 'Delete'}
           </button>
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="After debt" value={currency(summary.monthlyCashFlow)} compact tone={summary.monthlyCashFlow >= 0 ? 'positive' : 'negative'} />
         <MetricCard
           label="Before principal"
@@ -79,15 +79,15 @@ export function DealCard({ deal, index, selected, onToggleSelect, onDelete, isDe
       </div>
 
       {primaryStrength || primaryRisk ? (
-        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        <div className="mt-4 grid gap-2 lg:grid-cols-2">
           {primaryStrength ? (
-            <div className="rounded-2xl border border-green/20 bg-green-soft/70 p-3 text-sm leading-6 text-green">
-              <span className="font-semibold">Strength:</span> {primaryStrength}
+            <div className="rounded-xl border border-green/20 bg-green-soft p-3 text-xs leading-5 text-green/90">
+              <span className="font-semibold">Strength —</span> {primaryStrength}
             </div>
           ) : null}
           {primaryRisk ? (
-            <div className="rounded-2xl border border-red/20 bg-red-soft/70 p-3 text-sm leading-6 text-red">
-              <span className="font-semibold">Risk:</span> {primaryRisk}
+            <div className="rounded-xl border border-red/20 bg-red-soft p-3 text-xs leading-5 text-red/90">
+              <span className="font-semibold">Risk —</span> {primaryRisk}
             </div>
           ) : null}
         </div>

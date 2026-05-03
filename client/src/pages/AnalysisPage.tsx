@@ -356,7 +356,7 @@ export function AnalysisPage({ user }: AnalysisPageProps) {
                   type="button"
                   onClick={() => void handleImport()}
                   disabled={isImporting || isLoadingSavedDeal}
-                  className="rounded-full border border-blue bg-blue px-6 py-3 text-sm font-semibold text-white hover:brightness-95 md:min-w-[140px]"
+                  className="btn-import md:min-w-[140px]"
                 >
                   {isImporting ? 'Importing...' : 'Import'}
                 </button>
@@ -365,7 +365,7 @@ export function AnalysisPage({ user }: AnalysisPageProps) {
           </div>
 
           {importBanner ? (
-            <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm font-medium ${bannerClasses(importBanner.tone)}`}>
+            <div className={`mt-4 rounded-xl border px-4 py-3 text-sm font-medium ${bannerClasses(importBanner.tone)}`}>
               {importBanner.message}
             </div>
           ) : null}
@@ -377,7 +377,7 @@ export function AnalysisPage({ user }: AnalysisPageProps) {
               <p className="section-kicker">Deal inputs</p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight">Core underwriting fields</h2>
             </div>
-            <div className="inline-flex rounded-full border border-line bg-page px-4 py-2 text-sm text-muted">
+            <div className="inline-flex rounded-lg border border-line px-4 py-2 font-mono text-xs text-muted/70">
               {user ? `Saving as ${user.displayName || user.email || 'your account'}` : 'Save will redirect you to sign in if required.'}
             </div>
           </div>
@@ -575,7 +575,7 @@ export function AnalysisPage({ user }: AnalysisPageProps) {
               <button
                 type="submit"
                 disabled={isSubmitting || isLoadingSavedDeal}
-                className="rounded-full border border-green bg-green px-5 py-3 text-sm font-semibold text-white hover:brightness-95"
+                className="btn-primary"
               >
                 {isSubmitting ? 'Working...' : 'Analyze and save'}
               </button>
@@ -583,13 +583,13 @@ export function AnalysisPage({ user }: AnalysisPageProps) {
                 type="button"
                 onClick={() => void handleSubmit('analyze')}
                 disabled={isSubmitting || isLoadingSavedDeal}
-                className="rounded-full border border-line bg-white px-5 py-3 text-sm font-semibold text-ink hover:border-muted/40"
+                className="btn-secondary"
               >
                 Analyze only
               </button>
               <a
                 href="/dashboard"
-                className="rounded-full border border-line bg-white px-5 py-3 text-sm font-semibold text-ink hover:border-muted/40"
+                className="btn-secondary"
               >
                 Saved deals
               </a>
@@ -597,7 +597,7 @@ export function AnalysisPage({ user }: AnalysisPageProps) {
           </form>
 
           {statusBanner ? (
-            <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm font-medium ${bannerClasses(statusBanner.tone)}`}>
+            <div className={`mt-4 rounded-xl border px-4 py-3 text-sm font-medium ${bannerClasses(statusBanner.tone)}`}>
               {statusBanner.message}
             </div>
           ) : null}

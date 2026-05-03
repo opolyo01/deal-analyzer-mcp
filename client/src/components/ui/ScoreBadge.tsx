@@ -3,18 +3,27 @@ interface ScoreBadgeProps {
   score: number;
 }
 
-function badgeClasses(recommendation: string) {
-  const normalized = recommendation.toLowerCase();
-  if (normalized === 'buy') return 'border-green/25 bg-green-soft text-green';
-  if (normalized === 'pass') return 'border-red/25 bg-red-soft text-red';
-  return 'border-gold/25 bg-gold-soft text-gold';
+function verdictClass(recommendation: string) {
+  const n = recommendation.toLowerCase();
+  if (n === 'buy') return 'verdict-buy';
+  if (n === 'pass') return 'verdict-pass';
+  return 'verdict-hold';
+}
+
+function borderClass(recommendation: string) {
+  const n = recommendation.toLowerCase();
+  if (n === 'buy') return 'border-green/20 bg-green-soft';
+  if (n === 'pass') return 'border-red/20 bg-red-soft';
+  return 'border-gold/20 bg-gold-soft';
 }
 
 export function ScoreBadge({ recommendation, score }: ScoreBadgeProps) {
   return (
-    <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold ${badgeClasses(recommendation)}`}>
-      <span>{recommendation}</span>
-      <span className="rounded-full bg-white/70 px-2 py-0.5 text-xs text-ink">{score}/10</span>
+    <div className={`inline-flex items-center gap-3 rounded-xl border px-4 py-2.5 ${borderClass(recommendation)}`}>
+      <span className={`font-display text-sm font-700 uppercase tracking-wider ${verdictClass(recommendation)}`}>
+        {recommendation}
+      </span>
+      <span className="font-mono text-xs tabular-nums text-muted">{score}/10</span>
     </div>
   );
 }

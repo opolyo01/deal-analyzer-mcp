@@ -18,7 +18,7 @@ interface DashboardPageProps {
 type RecommendationFilter = 'ALL' | 'BUY' | 'HOLD' | 'PASS';
 
 function filterButtonClasses(filter: RecommendationFilter, activeFilter: RecommendationFilter) {
-  if (filter !== activeFilter) return 'border-line bg-white text-muted hover:border-muted/40 hover:text-ink';
+  if (filter !== activeFilter) return 'border-line bg-surface/50 text-muted hover:border-line/80 hover:text-ink';
   if (filter === 'BUY') return 'border-green/25 bg-green-soft text-green';
   if (filter === 'PASS') return 'border-red/25 bg-red-soft text-red';
   if (filter === 'HOLD') return 'border-gold/25 bg-gold-soft text-gold';
@@ -142,7 +142,7 @@ export function DashboardPage({ user, isAuthLoading }: DashboardPageProps) {
           <div className="flex flex-wrap gap-3">
             <a
               href="/add"
-              className="rounded-full border border-green bg-green px-5 py-3 text-sm font-semibold text-white hover:brightness-95"
+              className="btn-primary"
             >
               New analysis
             </a>
@@ -150,7 +150,7 @@ export function DashboardPage({ user, isAuthLoading }: DashboardPageProps) {
               <button
                 type="button"
                 onClick={() => setSelectedIds([])}
-                className="rounded-full border border-line bg-white px-5 py-3 text-sm font-semibold text-ink hover:border-muted/40"
+                className="btn-secondary"
               >
                 Clear selection
               </button>
@@ -159,13 +159,13 @@ export function DashboardPage({ user, isAuthLoading }: DashboardPageProps) {
         </div>
 
         <div className="mt-6 flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Filter rating</span>
+          <span className="section-kicker">Filter</span>
           {filterOptions.map((option) => (
             <button
               key={option.value}
               type="button"
               onClick={() => setRecommendationFilter(option.value)}
-              className={`rounded-full border px-4 py-2 text-sm font-semibold ${filterButtonClasses(option.value, recommendationFilter)}`}
+              className={`rounded-lg border px-4 py-2 text-sm font-medium ${filterButtonClasses(option.value, recommendationFilter)}`}
             >
               {option.label} ({option.count})
             </button>
@@ -276,9 +276,9 @@ export function DashboardPage({ user, isAuthLoading }: DashboardPageProps) {
                   <tbody>
                     {comparisonRows.map((row) => (
                       <tr key={row.label}>
-                        <td className="rounded-l-2xl border border-line/70 bg-page/70 px-4 py-3 text-sm text-muted">{row.label}</td>
+                        <td className="rounded-l-xl border border-line/70 bg-page/50 px-4 py-3 text-xs text-muted">{row.label}</td>
                         {selectedDeals.map((deal) => (
-                          <td key={`${row.label}-${deal.id}`} className="border-y border-r border-line/70 bg-white px-4 py-3 text-sm font-medium text-ink last:rounded-r-2xl">
+                          <td key={`${row.label}-${deal.id}`} className="border-y border-r border-line/70 bg-surface px-4 py-3 font-mono text-sm tabular-nums text-ink last:rounded-r-xl">
                             {row.render(deal)}
                           </td>
                         ))}
@@ -322,7 +322,7 @@ export function DashboardPage({ user, isAuthLoading }: DashboardPageProps) {
             <button
               type="button"
               onClick={() => setRecommendationFilter('ALL')}
-              className="rounded-full border border-line bg-white px-5 py-3 text-sm font-semibold text-ink hover:border-muted/40"
+              className="btn-secondary"
             >
               Show all deals
             </button>
@@ -340,21 +340,21 @@ export function DashboardPage({ user, isAuthLoading }: DashboardPageProps) {
             <>
               <a
                 href="/add"
-                className="rounded-full border border-green bg-green px-5 py-3 text-sm font-semibold text-white hover:brightness-95"
+                className="btn-primary"
               >
                 Start analysis
               </a>
               {!user ? (
                 <a
                   href="/auth/google"
-                  className="rounded-full border border-line bg-white px-5 py-3 text-sm font-semibold text-ink hover:border-muted/40"
+                  className="btn-secondary"
                 >
                   Sign in
                 </a>
               ) : null}
               <a
                 href="/quick-check"
-                className="rounded-full border border-line bg-white px-5 py-3 text-sm font-semibold text-ink hover:border-muted/40"
+                className="btn-secondary"
               >
                 Open quick check
               </a>
@@ -364,7 +364,7 @@ export function DashboardPage({ user, isAuthLoading }: DashboardPageProps) {
       )}
 
       {filteredDeals.length ? (
-        <section className="rounded-3xl border border-line/80 bg-page/80 px-5 py-4 text-sm text-muted">
+        <section className="rounded-xl border border-line/60 bg-surface/30 px-5 py-4 font-mono text-xs text-muted/70">
           {recommendationFilter === 'ALL'
             ? `Portfolio snapshot: ${buyCount} buy-rated deal${buyCount === 1 ? '' : 's'}, ${compactNumber(totalCashFlow)} in combined monthly after-debt cash flow, and an average score of ${averageScore}.`
             : `Filtered snapshot: ${filteredDeals.length} ${recommendationFilter.toLowerCase()}-rated deal${filteredDeals.length === 1 ? '' : 's'}, ${compactNumber(totalCashFlow)} in combined monthly after-debt cash flow, and an average score of ${averageScore}.`}

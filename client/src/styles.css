@@ -2,60 +2,72 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Light theme (default) ──────────────────────────────────────────────── */
 :root {
-  --page: #f7f6f1;
-  --surface: #ffffff;
-  --ink: #202124;
-  --muted: #6f6b62;
-  --line: #ded9cf;
-  --green: #257a5a;
-  --red: #b54747;
-  --gold: #a36f10;
-  --blue: #2f6fa3;
-  --soft-green: #e8f4ee;
-  --soft-red: #f8eceb;
-  --soft-gold: #f7efd9;
-  --soft-blue: #e8f1f7;
+  --color-page:       247 246 241;
+  --color-surface:    255 255 255;
+  --color-ink:        32 33 36;
+  --color-muted:      111 107 98;
+  --color-line:       222 217 207;
+  --color-green:      37 122 90;
+  --color-green-soft: 232 244 238;
+  --color-red:        181 71 71;
+  --color-red-soft:   248 236 235;
+  --color-gold:       163 111 16;
+  --color-gold-soft:  247 239 217;
+  --color-blue:       47 111 163;
+  --color-blue-soft:  232 241 247;
+  --shadow-panel: 0 24px 60px -32px rgba(32, 33, 36, 0.28);
+  --body-bg:
+    radial-gradient(circle at top left,  rgba(47, 111, 163, 0.09), transparent 28%),
+    radial-gradient(circle at top right, rgba(37, 122, 90, 0.1),   transparent 26%),
+    linear-gradient(180deg, rgba(255,255,255,0.8), rgba(247,246,241,0.95));
+}
+
+/* ── Dark theme ─────────────────────────────────────────────────────────── */
+:root[data-theme="dark"] {
+  --color-page:       15 14 10;
+  --color-surface:    26 25 20;
+  --color-ink:        237 232 218;
+  --color-muted:      110 104 89;
+  --color-line:       42 40 32;
+  --color-green:      40 212 155;
+  --color-green-soft: 11 31 22;
+  --color-red:        232 85 85;
+  --color-red-soft:   32 14 14;
+  --color-gold:       212 152 56;
+  --color-gold-soft:  30 22 8;
+  --color-blue:       91 163 212;
+  --color-blue-soft:  12 24 32;
+  --shadow-panel: 0 0 0 1px rgba(255,255,255,0.04) inset, 0 8px 32px rgba(0,0,0,0.5);
+  --body-bg:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(212, 152, 56, 0.07), transparent);
 }
 
 @layer base {
-  * {
-    @apply box-border;
-  }
-
-  html {
-    @apply scroll-smooth;
-  }
+  * { @apply box-border; }
+  html { @apply scroll-smooth; }
 
   body {
     @apply min-h-screen bg-page font-sans text-ink antialiased;
-    background-image:
-      radial-gradient(circle at top left, rgba(47, 111, 163, 0.09), transparent 28%),
-      radial-gradient(circle at top right, rgba(37, 122, 90, 0.1), transparent 26%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(247, 246, 241, 0.95));
+    background-image: var(--body-bg);
   }
 
-  a {
-    @apply transition-colors duration-150;
+  a { @apply transition-colors duration-150; }
+  img { @apply block max-w-full; }
+
+  input, select, textarea {
+    @apply w-full rounded-xl border border-line bg-surface px-4 py-3 text-sm text-ink outline-none transition placeholder:text-muted/50 focus:border-gold/60 focus:ring-2 focus:ring-gold/10;
   }
 
-  img {
-    @apply block max-w-full;
+  select option {
+    background-color: rgb(var(--color-surface));
+    color: rgb(var(--color-ink));
   }
 
-  input,
-  select,
-  textarea {
-    @apply w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink shadow-sm outline-none transition placeholder:text-muted/60 focus:border-blue focus:ring-2 focus:ring-blue/15;
-  }
-
-  button {
-    @apply transition duration-150;
-  }
-
-  button:disabled {
-    @apply cursor-not-allowed opacity-60;
-  }
+  button { @apply transition duration-150; }
+  button:disabled { @apply cursor-not-allowed opacity-50; }
 
   button:focus-visible,
   a:focus-visible,
@@ -63,24 +75,53 @@
   select:focus-visible,
   textarea:focus-visible,
   summary:focus-visible {
-    @apply outline-none ring-2 ring-blue/25 ring-offset-2 ring-offset-page;
+    @apply outline-none ring-2 ring-gold/30 ring-offset-2 ring-offset-page;
   }
 }
 
 @layer components {
   .surface-panel {
-    @apply rounded-3xl border border-line/80 bg-white/90 shadow-panel backdrop-blur;
+    @apply rounded-2xl border border-line bg-surface shadow-panel;
   }
 
   .section-kicker {
-    @apply text-xs font-semibold uppercase tracking-[0.18em] text-muted/80;
+    @apply font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-gold/70;
   }
 
   .topbar-link {
-    @apply rounded-full border border-transparent px-4 py-2 text-sm font-semibold text-muted hover:text-ink;
+    @apply rounded-lg border border-transparent px-4 py-2 font-sans text-sm font-medium text-muted transition-all hover:text-ink;
   }
 
   .topbar-link-active {
-    @apply border-line bg-white text-ink shadow-sm;
+    @apply border-line bg-surface text-ink;
   }
+
+  .btn-primary {
+    @apply rounded-xl border border-gold/50 bg-gold/15 px-5 py-3 text-sm font-medium text-gold transition hover:bg-gold/25 hover:border-gold/70;
+  }
+
+  .btn-secondary {
+    @apply rounded-xl border border-line px-5 py-3 text-sm font-medium text-muted transition hover:border-line/80 hover:text-ink;
+  }
+
+  .btn-import {
+    @apply rounded-xl border border-blue/40 bg-blue/10 px-6 py-3 text-sm font-medium text-blue transition hover:bg-blue/20;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: 'Syne', ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .verdict-buy  { color: rgb(var(--color-green)); text-shadow: 0 0 24px rgba(var(--color-green) / 0.35); }
+  .verdict-pass { color: rgb(var(--color-red));   text-shadow: 0 0 24px rgba(var(--color-red)   / 0.35); }
+  .verdict-hold { color: rgb(var(--color-gold));  text-shadow: 0 0 24px rgba(var(--color-gold)  / 0.35); }
+}
+
+/* Tone down glows on light theme (default — no data-theme or data-theme="light") */
+:root:not([data-theme="dark"]) .verdict-buy,
+:root:not([data-theme="dark"]) .verdict-pass,
+:root:not([data-theme="dark"]) .verdict-hold {
+  text-shadow: none;
 }

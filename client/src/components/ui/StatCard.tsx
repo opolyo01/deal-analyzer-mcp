@@ -9,9 +9,9 @@ interface StatCardProps {
 export function StatCard({ label, value, subtitle }: StatCardProps) {
   return (
     <div className="surface-panel p-5">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{label}</p>
-      <div className="mt-3 text-3xl font-semibold tracking-tight">{value}</div>
-      {subtitle ? <p className="mt-2 text-sm text-muted">{subtitle}</p> : null}
+      <p className="section-kicker">{label}</p>
+      <div className="mt-3 font-mono text-3xl font-semibold tabular-nums tracking-tight text-ink">{value}</div>
+      {subtitle ? <p className="mt-2 text-xs text-muted">{subtitle}</p> : null}
     </div>
   );
 }

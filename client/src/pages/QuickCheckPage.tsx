@@ -115,19 +115,19 @@ export function QuickCheckPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="rounded-full border border-green bg-green px-5 py-3 text-sm font-semibold text-white hover:brightness-95"
+              className="btn-primary"
             >
               {isSubmitting ? 'Analyzing...' : 'Analyze'}
             </button>
             <Link
               to="/add"
-              className="rounded-full border border-line bg-white px-5 py-3 text-sm font-semibold text-ink hover:border-muted/40"
+              className="btn-secondary"
             >
               Full Analysis
             </Link>
             <Link
               to="/dashboard"
-              className="rounded-full border border-line bg-blue-soft px-5 py-3 text-sm font-semibold text-ink hover:border-muted/40"
+              className="btn-secondary"
             >
               Saved Deals
             </Link>
@@ -139,7 +139,7 @@ export function QuickCheckPage() {
         <div className="mt-8">
           {analysis ? (
             <div className="grid gap-5">
-              <div className="flex flex-wrap items-start justify-between gap-4 rounded-3xl border border-line/80 bg-page/70 p-5">
+              <div className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-line/60 bg-surface/50 p-5">
                 <div>
                   <p className="section-kicker">Quick result</p>
                   <h2 className="mt-2 text-2xl font-semibold tracking-tight">Instant underwriting snapshot</h2>
@@ -167,20 +167,20 @@ export function QuickCheckPage() {
               <div className="flex flex-wrap gap-3">
                 <Link
                   to="/add"
-                  className="rounded-full border border-green bg-green px-5 py-3 text-sm font-semibold text-white hover:brightness-95"
+                  className="btn-primary"
                 >
                   Full Analysis
                 </Link>
                 <Link
                   to="/dashboard"
-                  className="rounded-full border border-line bg-white px-5 py-3 text-sm font-semibold text-ink hover:border-muted/40"
+                  className="btn-secondary"
                 >
                   Save this deal
                 </Link>
               </div>
             </div>
           ) : (
-            <div className="rounded-3xl border border-dashed border-line bg-page/70 p-10 text-center">
+            <div className="rounded-xl border border-dashed border-line/50 bg-surface/30 p-10 text-center">
               <h2 className="text-2xl font-semibold tracking-tight">No result yet</h2>
               <p className="mt-3 text-sm leading-6 text-muted">Enter a purchase price to calculate a fast investment score.</p>
             </div>

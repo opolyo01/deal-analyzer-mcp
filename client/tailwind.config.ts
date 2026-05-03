@@ -5,39 +5,38 @@ export default {
   theme: {
     extend: {
       colors: {
-        page: '#f7f6f1',
-        surface: '#ffffff',
-        ink: '#202124',
-        muted: '#6f6b62',
-        line: '#ded9cf',
+        page:    'rgb(var(--color-page)    / <alpha-value>)',
+        surface: 'rgb(var(--color-surface) / <alpha-value>)',
+        ink:     'rgb(var(--color-ink)     / <alpha-value>)',
+        muted:   'rgb(var(--color-muted)   / <alpha-value>)',
+        line:    'rgb(var(--color-line)    / <alpha-value>)',
         green: {
-          DEFAULT: '#257a5a',
-          soft: '#e8f4ee',
+          DEFAULT: 'rgb(var(--color-green)      / <alpha-value>)',
+          soft:    'rgb(var(--color-green-soft)  / <alpha-value>)',
         },
         red: {
-          DEFAULT: '#b54747',
-          soft: '#f8eceb',
+          DEFAULT: 'rgb(var(--color-red)      / <alpha-value>)',
+          soft:    'rgb(var(--color-red-soft)  / <alpha-value>)',
         },
         gold: {
-          DEFAULT: '#a36f10',
-          soft: '#f7efd9',
+          DEFAULT: 'rgb(var(--color-gold)      / <alpha-value>)',
+          soft:    'rgb(var(--color-gold-soft)  / <alpha-value>)',
         },
         blue: {
-          DEFAULT: '#2f6fa3',
-          soft: '#e8f1f7',
+          DEFAULT: 'rgb(var(--color-blue)      / <alpha-value>)',
+          soft:    'rgb(var(--color-blue-soft)  / <alpha-value>)',
         },
       },
+      fontFamily: {
+        sans:    ['DM Sans',          'ui-sans-serif',  'system-ui', 'sans-serif'],
+        mono:    ['"JetBrains Mono"', 'ui-monospace',   'monospace'],
+        display: ['Syne',             'ui-sans-serif',  'system-ui', 'sans-serif'],
+      },
       boxShadow: {
-        panel: '0 24px 60px -32px rgba(32, 33, 36, 0.28)',
+        panel: 'var(--shadow-panel)',
       },
       borderRadius: {
         '4xl': '2rem',
-      },
-      fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
-      },
-      fontWeight: {
-        heavy: '850',
       },
     },
   },
