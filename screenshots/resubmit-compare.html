@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=706, initial-scale=1.0">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 706px;
+    min-height: 850px;
+    background: #ffffff;
+    color: #202123;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  .page {
+    width: 706px;
+    min-height: 850px;
+    padding: 42px 44px 36px;
+  }
+  .tool-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    color: #5f6368;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 22px;
+  }
+  .tool-icon {
+    width: 18px;
+    height: 18px;
+    border: 1px solid #d1d5db;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: #5f6368;
+  }
+  .caret { color: #7b7f86; font-size: 12px; }
+  .intro {
+    font-size: 17px;
+    line-height: 1.5;
+    margin-bottom: 14px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th {
+    text-align: left;
+    font-size: 13px;
+    line-height: 1.4;
+    padding: 10px 0;
+    border-bottom: 1px solid #e5e7eb;
+    color: #202123;
+    vertical-align: bottom;
+  }
+  td {
+    font-size: 14px;
+    line-height: 1.45;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f1f3;
+    vertical-align: top;
+  }
+  .col-metric { width: 26%; }
+  .col-deal { width: 29%; }
+  .col-better { width: 16%; }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="tool-label">
+      <span class="tool-icon">{}</span>
+      Called tool
+      <span class="caret">▾</span>
+    </div>
+
+    <div class="intro">Here's a side-by-side comparison of the two Illinois townhouse deals using the same assumptions (20% down, 6.5% interest, 30-year fixed, professional management, reserves included).</div>
+
+    <table>
+      <thead>
+        <tr>
+          <th class="col-metric">Metric</th>
+          <th class="col-deal">Wheeling – 151 Lucerne Ct</th>
+          <th class="col-deal">Prospect Heights – 366 Country Club Dr</th>
+          <th class="col-better">Better</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Purchase price</td>
+          <td>~$375,000</td>
+          <td>~$469,000</td>
+          <td>Wheeling</td>
+        </tr>
+        <tr>
+          <td>Beds / Baths</td>
+          <td>4 / 3</td>
+          <td>3 / 3</td>
+          <td>Depends</td>
+        </tr>
+        <tr>
+          <td>Sq Ft</td>
+          <td>~1,600</td>
+          <td>~1,592</td>
+          <td>Wheeling</td>
+        </tr>
+        <tr>
+          <td>Estimated market rent</td>
+          <td>~$2,250/mo</td>
+          <td>~$3,100–$3,500/mo</td>
+          <td>Prospect Heights</td>
+        </tr>
+        <tr>
+          <td>HOA</td>
+          <td>~$626/mo</td>
+          <td>Likely much lower</td>
+          <td>Prospect Heights</td>
+        </tr>
+        <tr>
+          <td>Monthly cash flow</td>
+          <td>Negative under base assumptions</td>
+          <td>Stronger on rent potential</td>
+          <td>Prospect Heights</td>
+        </tr>
+        <tr>
+          <td>Overall score</td>
+          <td>PASS</td>
+          <td>Likely stronger candidate</td>
+          <td>Prospect Heights</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

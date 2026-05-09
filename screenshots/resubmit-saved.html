@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=706, initial-scale=1.0">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 706px;
+    min-height: 760px;
+    background: #ffffff;
+    color: #202123;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  .page {
+    width: 706px;
+    min-height: 760px;
+    padding: 42px 44px 36px;
+  }
+  .tool-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    color: #5f6368;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 26px;
+  }
+  .tool-icon {
+    width: 18px;
+    height: 18px;
+    border: 1px solid #d1d5db;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: #5f6368;
+  }
+  .caret { color: #7b7f86; font-size: 12px; }
+  .intro {
+    font-size: 18px;
+    line-height: 1.4;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 28px;
+  }
+  th {
+    text-align: left;
+    font-size: 13px;
+    line-height: 1.4;
+    padding: 10px 0;
+    border-bottom: 1px solid #e5e7eb;
+    color: #202123;
+  }
+  td {
+    font-size: 14px;
+    line-height: 1.45;
+    padding: 14px 0;
+    border-bottom: 1px solid #f0f1f3;
+    vertical-align: top;
+    font-weight: 600;
+  }
+  td.deal { width: 30%; }
+  .section-title {
+    font-size: 16px;
+    line-height: 1.4;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  ul {
+    padding-left: 28px;
+    margin-bottom: 10px;
+  }
+  li {
+    font-size: 15px;
+    line-height: 1.55;
+    margin-bottom: 4px;
+  }
+  .note {
+    font-size: 15px;
+    line-height: 1.6;
+    margin-top: 6px;
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="tool-label">
+      <span class="tool-icon">{}</span>
+      Called tool
+      <span class="caret">▾</span>
+    </div>
+
+    <div class="intro">You have 1 saved deal:</div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Deal</th>
+          <th>Recommendation</th>
+          <th>Score</th>
+          <th>Monthly Cash Flow</th>
+          <th>Cap Rate</th>
+          <th>CoC Return</th>
+          <th>DSCR</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="deal">123 Main St, Phoenix AZ</td>
+          <td>HOLD</td>
+          <td>7/10</td>
+          <td>$129.86/mo</td>
+          <td>6.7%</td>
+          <td>3.1%</td>
+          <td>1.10</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="section-title">Snapshot</div>
+    <ul>
+      <li>Price: <strong>$250,000</strong></li>
+      <li>Rent: <strong>$2,200/mo</strong></li>
+      <li>Taxes: <strong>$2,400/year</strong></li>
+      <li>Insurance: <strong>$1,200/year</strong></li>
+      <li>HOA: <strong>$0</strong></li>
+      <li>Break-even rent: <strong>$2,070.14/mo</strong></li>
+    </ul>
+
+    <div class="note">Main note: it has <strong>positive cash flow</strong>, but the <strong>cash-on-cash return is modest</strong>.</div>
+  </div>
+</body>
+</html>
